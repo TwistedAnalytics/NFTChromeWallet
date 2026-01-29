@@ -1,0 +1,20 @@
+{
+  "name": "@nft-wallet/extension",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nft-wallet/shared": "workspace:*",
+    "@nft-wallet/core": "workspace:*",
+    "@nft-wallet/evm": "workspace:*",
+    "@nft-wallet/sol": "workspace:*",
+    "esbuild": "^0.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
