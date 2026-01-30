@@ -12,20 +12,11 @@ interface NavigationState {
   data?: PageData;
 }
 
-export const useNavigate = () => {
-  const [state, setState] = useState<NavigationState>({ page: 'home' });
-
-  const navigate = useCallback((page: PageType, data?: PageData) => {
-    setState({ page, data });
-  }, []);
-
-  return navigate;
-};
-
 export const useNavigation = () => {
   const [state, setState] = useState<NavigationState>({ page: 'home' });
 
   const navigate = useCallback((page: PageType, data?: PageData) => {
+    console.log('Navigating to:', page);
     setState({ page, data });
   }, []);
 
