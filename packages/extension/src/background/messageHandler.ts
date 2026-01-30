@@ -67,15 +67,28 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   };
 }
       case 'WALLET_IMPORT': {
+        console.log('WALLET_IMPORT received');
         const data = WalletCreateSchema.parse(validatedMessage.data);
         if (!data.mnemonic) {
           throw new Error('Mnemonic is required for import');
         }
-        const vaultData = await engine.importWallet(data.password, data.mnemonic);
+        const result = await engine.importWallet(data.password, data.mnemonic);
         const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+  
         await saveWalletState(state);
-        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: vaultData });
-        return { success: true, data: state };
+        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+  
+        console.log('Wallet imported - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+  
+        return { 
+          success: true, 
+          data: { 
+            address: solAccount?.address,
+            ethAddress: ethAccount?.address
+          } 
+        };
       }
 
       case 'WALLET_UNLOCK': {
