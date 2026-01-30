@@ -84,7 +84,7 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
   const ed25519Seed = child.privateKey.slice(0, 32);
   
   // Derive ed25519 public key
-  const publicKeyBytes = ed25519.sync.getPublicKey(ed25519Seed);
+  const publicKeyBytes = ed25519.getPublicKey(ed25519Seed);
   
   const privateKey = bytesToHex(ed25519Seed);
   const publicKey = bytesToHex(publicKeyBytes);
