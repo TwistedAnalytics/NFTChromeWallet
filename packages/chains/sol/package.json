@@ -16,8 +16,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@nft-wallet/shared": "workspace:*",
     "@nft-wallet/core": "workspace:*",
+    "@nft-wallet/shared": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.87.0"
   },
   "devDependencies": {
