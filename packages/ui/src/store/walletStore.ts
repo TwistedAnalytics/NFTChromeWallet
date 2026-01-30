@@ -3,8 +3,10 @@ import type { NFT, Network } from '@nft-wallet/shared';
 
 interface WalletState {
   isUnlocked: boolean;
-  address: string | null;
-  balance: string;
+  address: string | null;  // Solana address
+  ethAddress: string | null;  // Add Ethereum address
+  balance: string;  // SOL balance
+  ethBalance: string;  // Add ETH balance
   nfts: NFT[];
   currentNetwork: Network;
   connectedSites: string[];
@@ -13,7 +15,9 @@ interface WalletState {
 
   setUnlocked: (unlocked: boolean) => void;
   setAddress: (address: string | null) => void;
+  setEthAddress: (address: string | null) => void;  // Add setter
   setBalance: (balance: string) => void;
+  setEthBalance: (balance: string) => void;  // Add setter
   setNFTs: (nfts: NFT[]) => void;
   setCurrentNetwork: (network: Network) => void;
   setConnectedSites: (sites: string[]) => void;
