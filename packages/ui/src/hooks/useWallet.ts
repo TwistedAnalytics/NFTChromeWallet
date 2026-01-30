@@ -22,9 +22,10 @@ export const useWallet = () => {
           send({ type: 'GET_BALANCE' }),
           send({ type: 'GET_CONNECTED_SITES' })
         ]);
-        
+
         if (balanceResponse.success && balanceResponse.data) {
           store.setBalance(balanceResponse.data.balance);
+          store.setEthBalance(balanceResponse.data.ethBalance);  // Add this line
         }
 
         if (sitesResponse.success && sitesResponse.data) {
