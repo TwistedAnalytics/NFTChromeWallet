@@ -37,7 +37,7 @@ export const useWallet = () => {
   } finally {
     store.setLoading(false);
   }
-}, [send, store]);
+}, [send]);
 
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
     store.setLoading(true);
@@ -63,7 +63,7 @@ export const useWallet = () => {
     } finally {
       store.setLoading(false);
     }
-  }, [send, store]);
+  }, [send]);
 
   const unlockWallet = useCallback(async (password: string) => {
     store.setLoading(true);
@@ -91,14 +91,14 @@ export const useWallet = () => {
     } finally {
       store.setLoading(false);
     }
-  }, [send, store, initialize]);
+  }, [send, initialize]);
 
   const lockWallet = useCallback(async () => {
     const response = await send({ type: 'LOCK_WALLET' });
     if (response.success) {
       store.reset();
     }
-  }, [send, store]);
+  }, [send]);
 
   const switchNetwork = useCallback(async (network: Network) => {
     const response = await send({
@@ -110,7 +110,7 @@ export const useWallet = () => {
       store.setCurrentNetwork(network);
       await initialize();
     }
-  }, [send, store, initialize]);
+  }, [send, initialize]);
 
   const disconnectSite = useCallback(async (origin: string) => {
     const response = await send({
@@ -121,11 +121,7 @@ export const useWallet = () => {
     if (response.success) {
       store.setConnectedSites(store.connectedSites.filter(site => site !== origin));
     }
-  }, [send, store]);
-
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  }, [send]);
 
   return {
     ...store,
