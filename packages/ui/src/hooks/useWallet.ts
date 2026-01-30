@@ -102,11 +102,11 @@ export const useWallet = () => {
   }, [send, initialize]);
   
   const lockWallet = useCallback(async () => {
-    const response = await send({ type: 'LOCK_WALLET' });
-    if (response.success) {
-      store.reset();
-      }
-    }, [send]);
+  const response = await send({ type: 'WALLET_LOCK' });
+  if (response.success) {
+    store.reset();
+  }
+  }, [send]);
 
   const switchNetwork = useCallback(async (network: Network) => {
     const response = await send({
