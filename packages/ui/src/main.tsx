@@ -18,15 +18,23 @@ const App: React.FC = () => {
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkWallet = async () => {
-      const hasExistingWallet = address !== null || isUnlocked;
-      setHasWallet(hasExistingWallet || false);
-    };
-    
-    if (!isLoading) {
-      checkWallet();
+  const checkWallet = async () => {
+    try {
+      // Check if vault exists in storage
+      const result = await chrome.storage.local.get(['vaultData']);
+      const hasVault = !!result.vaultData;
+      console.log('Has vault:', hasVault, 'isUnlocked:', isUnlocked);
+      setHasWallet(hasVault);
+    } catch (error) {
+      console.error('Error checking wallet:', error);
+      setHasWallet(false);
     }
-  }, [address, isUnlocked, isLoading]);
+  };
+  
+  if (!isLoading) {
+    checkWallet();
+  }
+}, [isLoading, isUnlocked]);
 
   if (isLoading || hasWallet === null) {
     return (
