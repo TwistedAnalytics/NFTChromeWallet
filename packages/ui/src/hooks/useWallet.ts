@@ -77,7 +77,8 @@ export const useWallet = () => {
       if (response.success && response.data) {
         store.setUnlocked(true);
         store.setAddress(response.data.address);
-        await initialize();
+        //await initialize();
+        initialize().catch(console.error); // Run async without awaiting
         return { success: true };
       } else {
         store.setError(response.error || 'Failed to unlock wallet');
