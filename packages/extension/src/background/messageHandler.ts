@@ -45,51 +45,55 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     const engine = await getWalletEngine();
 
     switch (validatedMessage.type) {
+        
       // Wallet lifecycle
- case 'WALLET_CREATE': {
-  console.log('WALLET_CREATE received');
-  const data = WalletCreateSchema.parse(validatedMessage.data);
-  const result = await engine.createWallet(data.password, data.mnemonic);
-  const state = engine.getState();
-  const account = engine.getCurrentAccount('solana');
+    case 'WALLET_CREATE': {
+      console.log('WALLET_CREATE received');
+      const data = WalletCreateSchema.parse(validatedMessage.data);
+      const result = await engine.createWallet(data.password, data.mnemonic);
+      const state = engine.getState();
+      const solAccount = engine.getCurrentAccount('solana');
+      const ethAccount = engine.getCurrentAccount('ethereum');  // Add this
   
-  await saveWalletState(state);
-  await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+      await saveWalletState(state);
+      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
   
-  console.log('Wallet created, account:', account?.address);
+      console.log('Wallet created - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
   
-  return { 
-    success: true, 
-    data: { 
-      address: account?.address,
-      mnemonic: !data.mnemonic ? result.mnemonic : undefined
-    } 
-  };
-}
-      case 'WALLET_IMPORT': {
-        console.log('WALLET_IMPORT received');
-        const data = WalletCreateSchema.parse(validatedMessage.data);
-        if (!data.mnemonic) {
-          throw new Error('Mnemonic is required for import');
-        }
-        const result = await engine.importWallet(data.password, data.mnemonic);
-        const state = engine.getState();
-        const solAccount = engine.getCurrentAccount('solana');
-        const ethAccount = engine.getCurrentAccount('ethereum');
-  
-        await saveWalletState(state);
-        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
-  
-        console.log('Wallet imported - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
-  
-        return { 
-          success: true, 
-          data: { 
-            address: solAccount?.address,
-            ethAddress: ethAccount?.address
-          } 
-        };
+      return { 
+        success: true, 
+        data: { 
+          address: solAccount?.address,
+          ethAddress: ethAccount?.address,  // Add this
+          mnemonic: !data.mnemonic ? result.mnemonic : undefined
+        } 
+      };
+    }
+    
+    case 'WALLET_IMPORT': {
+      console.log('WALLET_IMPORT received');
+      const data = WalletCreateSchema.parse(validatedMessage.data);
+      if (!data.mnemonic) {
+        throw new Error('Mnemonic is required for import');
       }
+      const result = await engine.importWallet(data.password, data.mnemonic);
+      const state = engine.getState();
+      const solAccount = engine.getCurrentAccount('solana');
+      const ethAccount = engine.getCurrentAccount('ethereum');
+  
+      await saveWalletState(state);
+      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+  
+      console.log('Wallet imported - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+  
+      return { 
+        success: true, 
+        data: { 
+          address: solAccount?.address,
+          ethAddress: ethAccount?.address
+        } 
+      };
+    }
 
       case 'WALLET_UNLOCK': {
         console.log('WALLET_UNLOCK received');
