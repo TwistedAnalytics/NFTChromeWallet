@@ -5,7 +5,8 @@
   "description": "Multi-chain NFT wallet supporting Ethereum and Solana",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "host_permissions": [
     "http://*/*",
