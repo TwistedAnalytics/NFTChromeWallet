@@ -4,58 +4,67 @@ interface WalletCreateProps {
   onSubmit: (password: string, mnemonic?: string) => Promise<{ success: boolean; error?: string; mnemonic?: string }>;
 }
 
+export const WalletCreate: React.FC<WalletCreateProps> = ({ onSubmit }) => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [importMnemonic, setImportMnemonic] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedMnemonic, setGeneratedMnemonic] = useState<string | null>(null);
+
   const handleCreate = async () => {
-  if (password.length < 8) {
-    setError('Password must be at least 8 characters');
-    return;
-  }
-  if (password !== confirmPassword) {
-    setError('Passwords do not match');
-    return;
-  }
-
-  setIsCreating(true);
-  setError(null);
-
-  const result = await onSubmit(password, isImporting ? importMnemonic : undefined);
-
-  console.log('Wallet creation result:', result);
-
-  setIsCreating(false);
-
-  if (result.success) {
-    if (result.mnemonic) {
-      console.log('Setting generated mnemonic');
-      setGeneratedMnemonic(result.mnemonic);
-    } else {
-      console.log('No mnemonic returned, wallet imported or error');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
     }
-  } else {
-    setError(result.error || 'Failed to create wallet');
-  }
-};  // ← Close handleCreate function HERE
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
-if (generatedMnemonic) {
-  return (
-    <div className="card max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Backup Your Recovery Phrase</h2>
-      <div className="mb-4 p-4 bg-yellow-900/30 border border-yellow-600 rounded-lg">
-        <p className="text-sm text-yellow-200 mb-2">
-          Write down these words in order and keep them safe. You'll need them to recover your wallet.
-        </p>
+    setIsCreating(true);
+    setError(null);
+
+    const result = await onSubmit(password, isImporting ? importMnemonic : undefined);
+
+    console.log('Wallet creation result:', result);
+
+    setIsCreating(false);
+
+    if (result.success) {
+      if (result.mnemonic) {
+        console.log('Setting generated mnemonic');
+        setGeneratedMnemonic(result.mnemonic);
+      } else {
+        console.log('No mnemonic returned, wallet imported or error');
+      }
+    } else {
+      setError(result.error || 'Failed to create wallet');
+    }
+  };
+
+  if (generatedMnemonic) {
+    return (
+      <div className="card max-w-md mx-auto">
+        <h2 className="text-xl font-bold mb-4">Backup Your Recovery Phrase</h2>
+        <div className="mb-4 p-4 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+          <p className="text-sm text-yellow-200 mb-2">
+            Write down these words in order and keep them safe. You'll need them to recover your wallet.
+          </p>
+        </div>
+        <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+          <p className="text-sm font-mono leading-relaxed">{generatedMnemonic}</p>
+        </div>
+        <button
+          onClick={() => window.close()}
+          className="btn-primary w-full"
+        >
+          I've Saved My Recovery Phrase
+        </button>
       </div>
-      <div className="mb-6 p-4 bg-gray-700 rounded-lg">
-        <p className="text-sm font-mono leading-relaxed">{generatedMnemonic}</p>
-      </div>
-      <button
-        onClick={() => window.close()}
-        className="btn-primary w-full"
-      >
-        I've Saved My Recovery Phrase
-      </button>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="card max-w-md mx-auto">
