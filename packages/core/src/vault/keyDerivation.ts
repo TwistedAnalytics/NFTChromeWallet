@@ -62,29 +62,6 @@ export function deriveEthereumKey(mnemonic: string, index: number = 0): {
   };
 }
 
-//start sol
-
-/**
- * Base58 encode function for Solana addresses
- */
-function base58Encode(bytes: Uint8Array): string {
-  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let num = 0n;
-  for (const byte of bytes) {
-    num = num * 256n + BigInt(byte);
-  }
-  if (num === 0n) return ALPHABET[0];
-  let result = '';
-  while (num > 0n) {
-    result = ALPHABET[Number(num % 58n)] + result;
-    num = num / 58n;
-  }
-  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
-    result = ALPHABET[0] + result;
-  }
-  return result;
-}
-
 /**
  * Derive Solana key from mnemonic using proper ed25519
  */
@@ -123,9 +100,7 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
   };
 }
 
-//end sol
-  
- /**
+/**
  * Base58 encode (Bitcoin/Solana style)
  */
 function base58Encode(bytes: Uint8Array): string {
@@ -151,7 +126,6 @@ function base58Encode(bytes: Uint8Array): string {
   
   return result;
 }
-
 
 /**
  * Derive Ethereum address from public key (Keccak-256 hash)
