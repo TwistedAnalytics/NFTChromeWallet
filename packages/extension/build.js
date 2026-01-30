@@ -63,7 +63,7 @@ console.log('📦 Building extension...');
 
 const buildOptions = {
   bundle: true,
-  format: 'esm',
+  format: 'iife',
   platform: 'browser',
   target: 'es2022',
   sourcemap: true,
