@@ -54,7 +54,8 @@ export const useWallet = () => {
     if (response.success && response.data) {
       store.setUnlocked(true);
       store.setAddress(response.data.address);
-      console.log('Wallet created successfully, address:', response.data.address);
+      store.setEthAddress(response.data.ethAddress);  // Add this
+      console.log('Wallet created - SOL:', response.data.address, 'ETH:', response.data.ethAddress);
       return { success: true, mnemonic: response.data.mnemonic };
     } else {
       store.setError(response.error || 'Failed to create wallet');
@@ -75,15 +76,16 @@ export const useWallet = () => {
     store.setError(null);
     try {
       const response = await send({
-        type: 'UNLOCK_WALLET',
+        type: 'WALLET_UNLOCK',
         data: { password },
       });
-      
+    
       if (response.success && response.data) {
         store.setUnlocked(true);
         store.setAddress(response.data.address);
-        //await initialize();
-        initialize().catch(console.error); // Run async without awaiting
+        store.setEthAddress(response.data.ethAddress);  // Add this
+        console.log('Wallet unlocked - SOL:', response.data.address, 'ETH:', response.data.ethAddress);
+        initialize().catch(console.error);
         return { success: true };
       } else {
         store.setError(response.error || 'Failed to unlock wallet');
@@ -97,13 +99,13 @@ export const useWallet = () => {
       store.setLoading(false);
     }
   }, [send, initialize]);
-
+  
   const lockWallet = useCallback(async () => {
     const response = await send({ type: 'LOCK_WALLET' });
     if (response.success) {
       store.reset();
-    }
-  }, [send]);
+      }
+    }, [send]);
 
   const switchNetwork = useCallback(async (network: Network) => {
     const response = await send({
