@@ -211,11 +211,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-      case 'GET_BALANCE': {
-        // For now return 0, implement real balance fetching later
-        return { success: true, data: { balance: '0' } };
-      }
-
       case 'GET_CONNECTED_SITES': {
         const permissions = await listPermissions();
         const sites = permissions.map(p => p.origin);
