@@ -22,6 +22,33 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
+      <div className="card mb-4">
+  <h2 className="text-lg font-semibold mb-3">Balances</h2>
+  <div className="space-y-2">
+    <div className="flex items-center justify-between">
+      <span className="text-gray-400">Solana (SOL)</span>
+      <span className="text-xl font-bold text-indigo-400">{balance} SOL</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span className="text-gray-400">Ethereum (ETH)</span>
+      <span className="text-xl font-bold text-purple-400">{ethBalance} ETH</span>
+    </div>
+  </div>
+  
+  {/* Add Gas Warning */}
+  {(parseFloat(balance) < 0.01 || parseFloat(ethBalance) < 0.001) && (
+    <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+      <p className="text-xs text-yellow-200">
+        ⚠️ <strong>Need Gas Fees:</strong> To transfer NFTs, you need:
+      </p>
+      <ul className="text-xs text-yellow-200 mt-1 ml-4 list-disc">
+        {parseFloat(balance) < 0.01 && <li>~0.01 SOL for Solana NFTs</li>}
+        {parseFloat(ethBalance) < 0.001 && <li>~0.001 ETH for Ethereum NFTs</li>}
+      </ul>
+    </div>
+  )}
+  </div>
+
       <div className="grid grid-cols-2 gap-3 mb-6">
         <button
           onClick={() => navigate('gallery')}
