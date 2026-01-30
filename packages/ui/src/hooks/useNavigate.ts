@@ -22,3 +22,9 @@ export const useNavigation = () => {
 
   return { state, navigate };
 };
+
+// Add this export for backwards compatibility
+export const useNavigate = () => {
+  const { navigate } = useNavigation();
+  return navigate;
+};
