@@ -8,32 +8,36 @@ export const useWallet = () => {
   const { send } = useMessaging();
 
   const initialize = useCallback(async () => {
-    store.setLoading(true);
-    try {
-      const statusResponse = await send({ type: 'GET_STATUS' });
-      if (statusResponse.success && statusResponse.data) {
-        store.setUnlocked(statusResponse.data.isUnlocked);
-        if (statusResponse.data.isUnlocked) {
-          store.setAddress(statusResponse.data.address || null);
-          store.setCurrentNetwork(statusResponse.data.network || 'mainnet');
-          
-          const balanceResponse = await send({ type: 'GET_BALANCE' });
-          if (balanceResponse.success && balanceResponse.data) {
-            store.setBalance(balanceResponse.data.balance);
-          }
+  store.setLoading(true);
+  try {
+    const statusResponse = await send({ type: 'GET_STATUS' });
+    if (statusResponse.success && statusResponse.data) {
+      store.setUnlocked(statusResponse.data.isUnlocked);
+      if (statusResponse.data.isUnlocked) {
+        store.setAddress(statusResponse.data.address || null);
+        store.setCurrentNetwork(statusResponse.data.network || 'mainnet');
+        
+        // Make these calls in parallel instead of sequential
+        const [balanceResponse, sitesResponse] = await Promise.all([
+          send({ type: 'GET_BALANCE' }),
+          send({ type: 'GET_CONNECTED_SITES' })
+        ]);
+        
+        if (balanceResponse.success && balanceResponse.data) {
+          store.setBalance(balanceResponse.data.balance);
+        }
 
-          const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
-          if (sitesResponse.success && sitesResponse.data) {
-            store.setConnectedSites(sitesResponse.data.sites);
-          }
+        if (sitesResponse.success && sitesResponse.data) {
+          store.setConnectedSites(sitesResponse.data.sites);
         }
       }
-    } catch (error) {
-      store.setError(error instanceof Error ? error.message : 'Failed to initialize wallet');
-    } finally {
-      store.setLoading(false);
     }
-  }, [send, store]);
+  } catch (error) {
+    store.setError(error instanceof Error ? error.message : 'Failed to initialize wallet');
+  } finally {
+    store.setLoading(false);
+  }
+}, [send, store]);
 
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
     store.setLoading(true);
