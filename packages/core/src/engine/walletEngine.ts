@@ -54,12 +54,12 @@ async createWallet(password: string, mnemonic?: string): Promise<{ vaultData: Va
   };
 }
 
-  /**
-   * Import wallet from mnemonic
-   */
-  async importWallet(password: string, mnemonic: string): Promise<VaultData> {
-    return this.createWallet(password, mnemonic);
-  }
+/**
+ * Import wallet from mnemonic
+ */
+async importWallet(password: string, mnemonic: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
+  return this.createWallet(password, mnemonic);
+}
 
   /**
    * Unlock wallet
