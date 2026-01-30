@@ -118,6 +118,72 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
+      case 'GET_BALANCE': {
+  const state = engine.getState();
+  const solAccount = engine.getCurrentAccount('solana');
+  const ethAccount = engine.getCurrentAccount('ethereum');
+  
+  let solBalance = '0';
+  let ethBalance = '0';
+  
+  // Fetch SOL balance from Solana
+  if (solAccount && state.isUnlocked) {
+    try {
+      const solanaRpc = 'https://api.mainnet-beta.solana.com';
+      const response = await fetch(solanaRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBalance',
+          params: [solAccount.address]
+        })
+      });
+      const data = await response.json();
+      if (data.result?.value !== undefined) {
+        // Convert lamports to SOL (1 SOL = 1,000,000,000 lamports)
+        solBalance = (data.result.value / 1_000_000_000).toFixed(6);
+      }
+    } catch (error) {
+      console.error('Failed to fetch SOL balance:', error);
+    }
+  }
+  
+  // Fetch ETH balance from Ethereum
+  if (ethAccount && state.isUnlocked) {
+    try {
+      const ethRpc = 'https://eth.llamarpc.com';
+      const response = await fetch(ethRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getBalance',
+          params: [ethAccount.address, 'latest']
+        })
+      });
+      const data = await response.json();
+      if (data.result) {
+        // Convert wei to ETH (1 ETH = 10^18 wei)
+        const weiBalance = BigInt(data.result);
+        ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ETH balance:', error);
+    }
+  }
+  
+  return { 
+    success: true, 
+    data: { 
+      balance: solBalance,
+      ethBalance: ethBalance
+    } 
+  };
+}
+
       case 'WALLET_LOCK': {
         engine.lockWallet();
         const state = engine.getState();
