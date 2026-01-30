@@ -46,15 +46,23 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
     switch (validatedMessage.type) {
       // Wallet lifecycle
-      case 'WALLET_CREATE': {
-        const data = WalletCreateSchema.parse(validatedMessage.data);
-        const vaultData = await engine.createWallet(data.password, data.mnemonic);
-        const state = engine.getState();
-        await saveWalletState(state);
-        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: vaultData });
-        return { success: true, data: state };
-      }
-
+     case 'WALLET_CREATE': {
+  const data = WalletCreateSchema.parse(validatedMessage.data);
+  const result = await engine.createWallet(data.password, data.mnemonic);
+  const state = engine.getState();
+  const account = engine.getCurrentAccount('solana');
+  
+  await saveWalletState(state);
+  await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+  
+  return { 
+    success: true, 
+    data: { 
+      address: account?.address,
+      mnemonic: !data.mnemonic ? result.mnemonic : undefined // Only return for new wallets
+    } 
+  };
+}
       case 'WALLET_IMPORT': {
         const data = WalletCreateSchema.parse(validatedMessage.data);
         if (!data.mnemonic) {
