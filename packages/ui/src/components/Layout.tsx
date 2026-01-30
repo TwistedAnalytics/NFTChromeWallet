@@ -20,11 +20,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-xl font-bold text-indigo-400">VaultNFT</h1>
             <button
-              onClick={() => lockWallet}
+            onClick={async () => {
+              await lockWallet();
+            }}
               className="text-sm text-gray-400 hover:text-white transition-colors"
             >
               Lock
-            </button>
+              </button>
           </div>
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="text-gray-400">SOL: {formatAddress(address)}</span>
