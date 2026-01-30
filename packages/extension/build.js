@@ -53,44 +53,56 @@ const buildOptions = {
   logLevel: 'info',
 };
 
-// Build background script
-await esbuild.build({
-  ...buildOptions,
-  entryPoints: ['src/background/index.ts'],
-  outfile: 'dist/background.js',
-  watch: watch ? {
-    onRebuild(error) {
-      if (error) console.error('❌ Background rebuild failed:', error);
-      else console.log('✅ Background rebuilt');
-    },
-  } : false,
-});
+if (watch) {
+  // Watch mode using context
+  const ctxBackground = await esbuild.context({
+    ...buildOptions,
+    entryPoints: ['src/background/index.ts'],
+    outfile: 'dist/background.js',
+  });
 
-// Build content script
-await esbuild.build({
-  ...buildOptions,
-  entryPoints: ['src/content/index.ts'],
-  outfile: 'dist/content.js',
-  watch: watch ? {
-    onRebuild(error) {
-      if (error) console.error('❌ Content rebuild failed:', error);
-      else console.log('✅ Content rebuilt');
-    },
-  } : false,
-});
+  const ctxContent = await esbuild.context({
+    ...buildOptions,
+    entryPoints: ['src/content/index.ts'],
+    outfile: 'dist/content.js',
+  });
 
-// Build inject script
-await esbuild.build({
-  ...buildOptions,
-  entryPoints: ['src/inject/index.ts'],
-  outfile: 'dist/inject.js',
-  watch: watch ? {
-    onRebuild(error) {
-      if (error) console.error('❌ Inject rebuild failed:', error);
-      else console.log('✅ Inject rebuilt');
-    },
-  } : false,
-});
+  const ctxInject = await esbuild.context({
+    ...buildOptions,
+    entryPoints: ['src/inject/index.ts'],
+    outfile: 'dist/inject.js',
+  });
+
+  await Promise.all([
+    ctxBackground.watch(),
+    ctxContent.watch(),
+    ctxInject.watch(),
+  ]);
+
+  console.log('✅ Extension built successfully!');
+  console.log('👀 Watching for changes...');
+} else {
+  // Production build
+  await Promise.all([
+    esbuild.build({
+      ...buildOptions,
+      entryPoints: ['src/background/index.ts'],
+      outfile: 'dist/background.js',
+    }),
+    esbuild.build({
+      ...buildOptions,
+      entryPoints: ['src/content/index.ts'],
+      outfile: 'dist/content.js',
+    }),
+    esbuild.build({
+      ...buildOptions,
+      entryPoints: ['src/inject/index.ts'],
+      outfile: 'dist/inject.js',
+    }),
+  ]);
+
+  console.log('✅ Extension built successfully!');
+}
 
 console.log('✅ Extension built successfully!');
 
