@@ -29,7 +29,9 @@ interface WalletState {
 const initialState = {
   isUnlocked: false,
   address: null,
+  ethAddress: null,  // Add this
   balance: '0',
+  ethBalance: '0',  // Add this
   nfts: [],
   currentNetwork: 'mainnet' as Network,
   connectedSites: [],
@@ -42,7 +44,9 @@ export const useWalletStore = create<WalletState>((set) => ({
 
   setUnlocked: (unlocked) => set({ isUnlocked: unlocked }),
   setAddress: (address) => set({ address }),
+  setEthAddress: (ethAddress) => set({ ethAddress }),  // Add this
   setBalance: (balance) => set({ balance }),
+  setEthBalance: (ethBalance) => set({ ethBalance }),  // Add this
   setNFTs: (nfts) => set({ nfts }),
   setCurrentNetwork: (network) => set({ currentNetwork: network }),
   setConnectedSites: (sites) => set({ connectedSites: sites }),
