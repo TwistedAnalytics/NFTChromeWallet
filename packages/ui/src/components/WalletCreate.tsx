@@ -28,16 +28,20 @@ export const WalletCreate: React.FC<WalletCreateProps> = ({ onSubmit }) => {
 
     const result = await onSubmit(password, isImporting ? importMnemonic : undefined);
 
-    setIsCreating(false);
+console.log('Wallet creation result:', result);
 
-    if (result.success) {
-      if (result.mnemonic) {
-        setGeneratedMnemonic(result.mnemonic);
-      }
-    } else {
-      setError(result.error || 'Failed to create wallet');
-    }
-  };
+setIsCreating(false);
+
+if (result.success) {
+  if (result.mnemonic) {
+    console.log('Setting generated mnemonic');
+    setGeneratedMnemonic(result.mnemonic);
+  } else {
+    console.log('No mnemonic returned, wallet imported or error');
+  }
+} else {
+  setError(result.error || 'Failed to create wallet');
+}
 
   if (generatedMnemonic) {
     return (
