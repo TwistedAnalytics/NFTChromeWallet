@@ -2,7 +2,11 @@ import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/b
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { bytesToHex } from '@nft-wallet/shared';
-import { ed25519 } from '@noble/curves/ed25519';
+import * as ed25519 from '@noble/ed25519';
+import { sha512 } from '@noble/hashes/sha512';
+
+// Set the hashing function for ed25519
+ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
 
 /**
  * BIP-44 derivation paths
@@ -82,7 +86,7 @@ function base58Encode(bytes: Uint8Array): string {
 }
 
 /**
- * Derive Solana key from mnemonic
+ * Derive Solana key from mnemonic using proper ed25519
  */
 export function deriveSolanaKey(mnemonic: string, index: number = 0): {
   privateKey: string;
@@ -99,14 +103,16 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
     throw new Error('Failed to derive private key');
   }
 
-  // Use the first 32 bytes as ed25519 seed
+  // Use first 32 bytes as ed25519 seed
   const ed25519Seed = child.privateKey.slice(0, 32);
   
-  // Derive ed25519 public key from seed
-  const publicKeyBytes = ed25519.getPublicKey(ed25519Seed);
+  // Derive ed25519 public key
+  const publicKeyBytes = ed25519.sync.getPublicKey(ed25519Seed);
   
   const privateKey = bytesToHex(ed25519Seed);
   const publicKey = bytesToHex(publicKeyBytes);
+  
+  // Base58 encode the public key for Solana address
   const address = base58Encode(publicKeyBytes);
 
   return {
@@ -119,18 +125,33 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
 
 //end sol
   
-  // For now, use a simple base58 encoding of the seed
-  // In production, you'd use @solana/web3.js Keypair.fromSeed()
-  const publicKey = base58.encode(ed25519Seed);
-  const address = publicKey;
-
-  return {
-    privateKey,
-    publicKey,
-    address,
-    derivationPath: path,
-  };
+ /**
+ * Base58 encode (Bitcoin/Solana style)
+ */
+function base58Encode(bytes: Uint8Array): string {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  
+  let num = 0n;
+  for (const byte of bytes) {
+    num = num * 256n + BigInt(byte);
+  }
+  
+  if (num === 0n) return ALPHABET[0];
+  
+  let result = '';
+  while (num > 0n) {
+    result = ALPHABET[Number(num % 58n)] + result;
+    num = num / 58n;
+  }
+  
+  // Add leading '1' for each leading zero byte
+  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+    result = ALPHABET[0] + result;
+  }
+  
+  return result;
 }
+
 
 /**
  * Derive Ethereum address from public key (Keccak-256 hash)
