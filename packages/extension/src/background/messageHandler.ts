@@ -92,6 +92,37 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: state };
       }
 
+      // ADD THESE NEW CASES:
+      case 'GET_STATUS': {
+        const state = engine.getState();
+        const account = engine.getCurrentAccount('solana');
+        return { 
+          success: true, 
+          data: { 
+            isUnlocked: state.isUnlocked,
+            address: account?.address || null,
+            network: state.settings.selectedNetwork.solana
+          } 
+        };
+      }
+
+      case 'GET_BALANCE': {
+        // For now return 0, implement real balance fetching later
+        return { success: true, data: { balance: '0' } };
+      }
+
+      case 'GET_CONNECTED_SITES': {
+        const permissions = await listPermissions();
+        const sites = permissions.map(p => p.origin);
+        return { success: true, data: { sites } };
+      }
+
+      case 'GET_NFTS': {
+        const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
+        const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
+        return { success: true, data: { nfts } };
+      }
+
       // Account management
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
