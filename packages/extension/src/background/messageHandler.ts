@@ -103,16 +103,17 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: state };
       }
 
-      // ADD THESE NEW CASES:
       case 'GET_STATUS': {
         const state = engine.getState();
-        const account = engine.getCurrentAccount('solana');
-        return { 
-          success: true, 
-          data: { 
-            isUnlocked: state.isUnlocked,
-            address: account?.address || null,
-            network: state.settings.selectedNetwork.solana
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+      return { 
+        success: true, 
+        data: { 
+          isUnlocked: state.isUnlocked,
+          address: solAccount?.address || null,  // Solana address for NFTs
+          ethAddress: ethAccount?.address || null,  // Also include ETH address
+          network: state.settings.selectedNetwork.solana
           } 
         };
       }
