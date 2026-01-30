@@ -21,10 +21,10 @@ fs.copyFileSync(
 );
 
 // Copy popup HTML
-fs.copyFileSync(
-  path.join(__dirname, '../../ui/dist/index.html'),
-  path.join(distDir, 'popup.html')
-);
+const uiDistPath = path.join(__dirname, '../ui/dist/index.html');
+if (fs.existsSync(uiDistPath)) {
+  fs.copyFileSync(uiDistPath, path.join(distDir, 'popup.html'));
+}
 
 // Create icons directory and placeholder icons
 const iconsDir = path.join(distDir, 'icons');
