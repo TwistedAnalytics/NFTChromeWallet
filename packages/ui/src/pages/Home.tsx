@@ -3,8 +3,8 @@ import { useWallet } from '../hooks/useWallet';
 import { useNavigate } from '../hooks/useNavigate';
 
 export const Home: React.FC = () => {
-  const { address, ethAddress, balance, ethBalance } = useWallet();
-  const navigate = useNavigate();
+   const { address, ethAddress, balance, ethBalance } = useWallet();
+   const { navigate } = useNavigation();  // Changed from useNavigate()
 
   return (
     <div>
