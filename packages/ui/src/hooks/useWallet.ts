@@ -40,30 +40,35 @@ export const useWallet = () => {
 }, [send]);
 
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
-    store.setLoading(true);
-    store.setError(null);
-    try {
-      const response = await send({
-        type: 'CREATE_WALLET',
-        data: { password, mnemonic },
-      });
-      
-      if (response.success && response.data) {
-        store.setUnlocked(true);
-        store.setAddress(response.data.address);
-        return { success: true, mnemonic: response.data.mnemonic };
-      } else {
-        store.setError(response.error || 'Failed to create wallet');
-        return { success: false, error: response.error };
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to create wallet';
-      store.setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
-      store.setLoading(false);
+  store.setLoading(true);
+  store.setError(null);
+  try {
+    console.log('Creating wallet...');
+    const response = await send({
+      type: 'WALLET_CREATE',
+      data: { password, mnemonic },
+    });
+    
+    console.log('Create wallet response:', response);
+    
+    if (response.success && response.data) {
+      store.setUnlocked(true);
+      store.setAddress(response.data.address);
+      console.log('Wallet created successfully, address:', response.data.address);
+      return { success: true, mnemonic: response.data.mnemonic };
+    } else {
+      store.setError(response.error || 'Failed to create wallet');
+      return { success: false, error: response.error };
     }
-  }, [send]);
+  } catch (error) {
+    console.error('Create wallet error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Failed to create wallet';
+    store.setError(errorMsg);
+    return { success: false, error: errorMsg };
+  } finally {
+    store.setLoading(false);
+  }
+}, [send]);
 
   const unlockWallet = useCallback(async (password: string) => {
     store.setLoading(true);
