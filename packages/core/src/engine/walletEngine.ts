@@ -32,20 +32,27 @@ export class WalletEngine {
   /**
    * Create new wallet
    */
-  async createWallet(password: string, mnemonic?: string): Promise<VaultData> {
-    const vaultData = await this.vault.create(password, mnemonic);
-    const content = await this.vault.unlock(vaultData, password);
+  /**
+ * Create new wallet
+ */
+async createWallet(password: string, mnemonic?: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
+  const vaultData = await this.vault.create(password, mnemonic);
+  const content = await this.vault.unlock(vaultData, password);
 
-    this.state = {
-      isInitialized: true,
-      isUnlocked: true,
-      accounts: content.accounts,
-      settings: this.state.settings,
-      vaultData,
-    };
+  this.state = {
+    isInitialized: true,
+    isUnlocked: true,
+    accounts: content.accounts,
+    settings: this.state.settings,
+    vaultData,
+  };
 
-    return vaultData;
-  }
+  // Return both vaultData and the mnemonic
+  return { 
+    vaultData, 
+    mnemonic: this.vault.getMnemonic() 
+  };
+}
 
   /**
    * Import wallet from mnemonic
