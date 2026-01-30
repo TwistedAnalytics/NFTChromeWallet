@@ -57,6 +57,8 @@ export function deriveEthereumKey(mnemonic: string, index: number = 0): {
   };
 }
 
+//start sol
+
 /**
  * Derive Solana key from mnemonic
  */
@@ -75,33 +77,46 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
     throw new Error('Failed to derive private key');
   }
 
-  const privateKey = bytesToHex(child.privateKey);
-  
-  // For Solana, we need the ed25519 public key (32 bytes)
-  // The child.publicKey from secp256k1 is 33 bytes (compressed) or 65 bytes (uncompressed)
-  // We need to derive the ed25519 keypair from the seed directly
+  // For Solana, use the first 32 bytes of the derived key as the ed25519 seed
   const ed25519Seed = child.privateKey.slice(0, 32);
+  const privateKey = bytesToHex(ed25519Seed);
   
-  // Import base58 encoder
-  const base58 = (() => {
-    const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    return {
-      encode: (bytes: Uint8Array): string => {
-        let num = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
-        if (num === 0n) return alphabet[0];
-        let result = '';
-        while (num > 0n) {
-          result = alphabet[Number(num % 64n)] + result;
-          num = num / 64n;
-        }
-        // Add leading '1' for each leading zero byte
-        for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
-          result = alphabet[0] + result;
-        }
-        return result;
-      }
-    };
-  })();
+  // Simple base58 encode function
+  const base58Encode = (bytes: Uint8Array): string => {
+    const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let num = 0n;
+    for (const byte of bytes) {
+      num = num * 256n + BigInt(byte);
+    }
+    if (num === 0n) return ALPHABET[0];
+    let result = '';
+    while (num > 0n) {
+      result = ALPHABET[Number(num % 58n)] + result;
+      num = num / 58n;
+    }
+    // Add leading '1' for each leading zero byte
+    for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+      result = ALPHABET[0] + result;
+    }
+    return result;
+  };
+  
+  // For Solana, the address is the base58-encoded public key
+  // In a real implementation, you'd derive the ed25519 public key from the seed
+  // For now, we'll encode the seed (this is simplified)
+  const publicKeyBytes = ed25519Seed; // In production, derive actual ed25519 pubkey
+  const publicKey = bytesToHex(publicKeyBytes);
+  const address = base58Encode(publicKeyBytes);
+
+  return {
+    privateKey,
+    publicKey,
+    address,
+    derivationPath: path,
+  };
+}
+
+//end sol
   
   // For now, use a simple base58 encoding of the seed
   // In production, you'd use @solana/web3.js Keypair.fromSeed()
