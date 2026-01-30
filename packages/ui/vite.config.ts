@@ -4,7 +4,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  build: {
+   build: {
     outDir: '../extension/dist',
     rollupOptions: {
       input: {
@@ -18,4 +18,3 @@ export default defineConfig({
       },
     },
   },
-});
