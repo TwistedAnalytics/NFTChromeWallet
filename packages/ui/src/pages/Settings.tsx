@@ -120,7 +120,7 @@ const handleChangePassword = async () => {
   };
 
   return (
-    <div className="p-4">
+      <div className="p-4 max-h-[550px] overflow-y-auto">
       <h2 className="text-2xl font-bold mb-6">Settings</h2>
 
       {/* Security Section */}
