@@ -47,53 +47,53 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     switch (validatedMessage.type) {
         
       // Wallet lifecycle
-    case 'WALLET_CREATE': {
-      console.log('WALLET_CREATE received');
-      const data = WalletCreateSchema.parse(validatedMessage.data);
-      const result = await engine.createWallet(data.password, data.mnemonic);
-      const state = engine.getState();
-      const solAccount = engine.getCurrentAccount('solana');
-      const ethAccount = engine.getCurrentAccount('ethereum');  // Add this
-  
-      await saveWalletState(state);
-      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
-  
-      console.log('Wallet created - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
-  
-      return { 
-        success: true, 
-        data: { 
-          address: solAccount?.address,
-          ethAddress: ethAccount?.address,  // Add this
-          mnemonic: !data.mnemonic ? result.mnemonic : undefined
-        } 
-      };
-    }
+      case 'WALLET_CREATE': {
+        console.log('WALLET_CREATE received');
+        const data = WalletCreateSchema.parse(validatedMessage.data);
+        const result = await engine.createWallet(data.password, data.mnemonic);
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
     
-    case 'WALLET_IMPORT': {
-      console.log('WALLET_IMPORT received');
-      const data = WalletCreateSchema.parse(validatedMessage.data);
-      if (!data.mnemonic) {
-        throw new Error('Mnemonic is required for import');
+        await saveWalletState(state);
+        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+    
+        console.log('Wallet created - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+    
+        return { 
+          success: true, 
+          data: { 
+            address: solAccount?.address,
+            ethAddress: ethAccount?.address,
+            mnemonic: !data.mnemonic ? result.mnemonic : undefined
+          } 
+        };
       }
-      const result = await engine.importWallet(data.password, data.mnemonic);
-      const state = engine.getState();
-      const solAccount = engine.getCurrentAccount('solana');
-      const ethAccount = engine.getCurrentAccount('ethereum');
-  
-      await saveWalletState(state);
-      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
-  
-      console.log('Wallet imported - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
-  
-      return { 
-        success: true, 
-        data: { 
-          address: solAccount?.address,
-          ethAddress: ethAccount?.address
-        } 
-      };
-    }
+      
+      case 'WALLET_IMPORT': {
+        console.log('WALLET_IMPORT received');
+        const data = WalletCreateSchema.parse(validatedMessage.data);
+        if (!data.mnemonic) {
+          throw new Error('Mnemonic is required for import');
+        }
+        const result = await engine.importWallet(data.password, data.mnemonic);
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+    
+        await saveWalletState(state);
+        await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: result.vaultData });
+    
+        console.log('Wallet imported - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+    
+        return { 
+          success: true, 
+          data: { 
+            address: solAccount?.address,
+            ethAddress: ethAccount?.address
+          } 
+        };
+      }
 
       case 'WALLET_UNLOCK': {
         console.log('WALLET_UNLOCK received');
@@ -123,162 +123,92 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'GET_BALANCE': {
-  const state = engine.getState();
-  const solAccount = engine.getCurrentAccount('solana');
-  const ethAccount = engine.getCurrentAccount('ethereum');
-  
-  console.log('GET_BALANCE - SOL account:', solAccount?.address);
-  console.log('GET_BALANCE - ETH account:', ethAccount?.address);
-  
-  let solBalance = '0';
-  let ethBalance = '0';
-  
-  // Fetch SOL balance from Solana
-  if (solAccount && state.isUnlocked) {
-    try {
-      const solanaRpc = 'https://api.mainnet-beta.solana.com';
-      console.log('Fetching SOL balance for:', solAccount.address);
-      const response = await fetch(solanaRpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getBalance',
-          params: [solAccount.address]
-        })
-      });
-      const data = await response.json();
-      console.log('SOL balance response:', data);
-      if (data.result?.value !== undefined) {
-        solBalance = (data.result.value / 1_000_000_000).toFixed(6);
-        console.log('SOL balance calculated:', solBalance);
-      }
-    } catch (error) {
-      console.error('Failed to fetch SOL balance:', error);
-    }
-  }
-  
-  // Fetch ETH balance from Ethereum
-  if (ethAccount && state.isUnlocked) {
-    try {
-      const ethRpc = 'https://eth.llamarpc.com';
-      console.log('Fetching ETH balance for:', ethAccount.address);
-      const response = await fetch(ethRpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'eth_getBalance',
-          params: [ethAccount.address, 'latest']
-        })
-      });
-      const data = await response.json();
-      console.log('ETH balance response:', data);
-      if (data.result) {
-        const weiBalance = BigInt(data.result);
-        ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
-        console.log('ETH balance calculated:', ethBalance);
-      }
-    } catch (error) {
-      console.error('Failed to fetch ETH balance:', error);
-    }
-  }
-  
-  return { 
-    success: true, 
-    data: { 
-      balance: solBalance,
-      ethBalance: ethBalance
-    } 
-  };
-}
-  
-    // Fetch ETH balance from Ethereum
-    if (ethAccount && state.isUnlocked) {
-      try {
-        const ethRpc = 'https://eth.llamarpc.com';
-        console.log('Fetching ETH balance for:', ethAccount.address);
-        const response = await fetch(ethRpc, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'eth_getBalance',
-            params: [ethAccount.address, 'latest']
-          })
-        });
-        const data = await response.json();
-        console.log('ETH balance response:', data);
-        if (data.result) {
-          const weiBalance = BigInt(data.result);
-          ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
-          console.log('ETH balance calculated:', ethBalance);
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+        
+        console.log('GET_BALANCE - SOL account:', solAccount?.address);
+        console.log('GET_BALANCE - ETH account:', ethAccount?.address);
+        
+        let solBalance = '0';
+        let ethBalance = '0';
+        
+        // Fetch SOL balance from Solana
+        if (solAccount && state.isUnlocked) {
+          try {
+            const solanaRpc = 'https://api.mainnet-beta.solana.com';
+            console.log('Fetching SOL balance for:', solAccount.address);
+            const response = await fetch(solanaRpc, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getBalance',
+                params: [solAccount.address]
+              })
+            });
+            const data = await response.json();
+            console.log('SOL balance response:', data);
+            if (data.result?.value !== undefined) {
+              solBalance = (data.result.value / 1_000_000_000).toFixed(6);
+              console.log('SOL balance calculated:', solBalance);
+            }
+          } catch (error) {
+            console.error('Failed to fetch SOL balance:', error);
+          }
         }
-      } catch (error) {
-        console.error('Failed to fetch ETH balance:', error);
+        
+        // Fetch ETH balance from Ethereum
+        if (ethAccount && state.isUnlocked) {
+          try {
+            const ethRpc = 'https://eth.llamarpc.com';
+            console.log('Fetching ETH balance for:', ethAccount.address);
+            const response = await fetch(ethRpc, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'eth_getBalance',
+                params: [ethAccount.address, 'latest']
+              })
+            });
+            const data = await response.json();
+            console.log('ETH balance response:', data);
+            if (data.result) {
+              const weiBalance = BigInt(data.result);
+              ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
+              console.log('ETH balance calculated:', ethBalance);
+            }
+          } catch (error) {
+            console.error('Failed to fetch ETH balance:', error);
+          }
+        }
+        
+        return { 
+          success: true, 
+          data: { 
+            balance: solBalance,
+            ethBalance: ethBalance
+          } 
+        };
       }
-    }
-  
-  return { 
-    success: true, 
-    data: { 
-      balance: solBalance,
-      ethBalance: ethBalance
-    } 
-  };
-}
 
-case 'GET_MNEMONIC': {
-  const state = engine.getState();
-  if (!state.isUnlocked) {
-    throw new Error('Wallet is locked');
-  }
-  const mnemonic = engine.getMnemonic();
-  return { success: true, data: { mnemonic } };
-}
-
-case 'SET_AUTO_LOCK_TIME': {
-  const { minutes } = validatedMessage.data;
-  engine.setAutoLockTime(minutes);
-  return { success: true };
-}
-  
-  // Fetch ETH balance from Ethereum
-  if (ethAccount && state.isUnlocked) {
-    try {
-      const ethRpc = 'https://eth.llamarpc.com';
-      const response = await fetch(ethRpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'eth_getBalance',
-          params: [ethAccount.address, 'latest']
-        })
-      });
-      const data = await response.json();
-      if (data.result) {
-        // Convert wei to ETH (1 ETH = 10^18 wei)
-        const weiBalance = BigInt(data.result);
-        ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
+      case 'GET_MNEMONIC': {
+        const state = engine.getState();
+        if (!state.isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+        const mnemonic = engine.getMnemonic();
+        return { success: true, data: { mnemonic } };
       }
-    } catch (error) {
-      console.error('Failed to fetch ETH balance:', error);
-    }
-  }
-  
-  return { 
-    success: true, 
-    data: { 
-      balance: solBalance,
-      ethBalance: ethBalance
-    } 
-  };
-}
+
+      case 'SET_AUTO_LOCK_TIME': {
+        const { minutes } = validatedMessage.data;
+        engine.setAutoLockTime(minutes);
+        return { success: true };
+      }
 
       case 'WALLET_LOCK': {
         engine.lockWallet();
@@ -296,13 +226,13 @@ case 'SET_AUTO_LOCK_TIME': {
         const state = engine.getState();
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
-      return { 
-        success: true, 
-        data: { 
-          isUnlocked: state.isUnlocked,
-          address: solAccount?.address || null,  // Solana address for NFTs
-          ethAddress: ethAccount?.address || null,  // Also include ETH address
-          network: state.settings.selectedNetwork.solana
+        return { 
+          success: true, 
+          data: { 
+            isUnlocked: state.isUnlocked,
+            address: solAccount?.address || null,
+            ethAddress: ethAccount?.address || null,
+            network: state.settings.selectedNetwork.solana
           } 
         };
       }
@@ -319,16 +249,13 @@ case 'SET_AUTO_LOCK_TIME': {
         return { success: true, data: { nfts } };
       }
 
-      // Account management
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
         const account = engine.getCurrentAccount(chain);
         return { success: true, data: account };
       }
 
-      // NFT operations
       case 'NFT_FETCH_ALL': {
-        // In production, this would fetch NFTs from chains
         const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
         const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
         return { success: true, data: nfts };
@@ -340,7 +267,6 @@ case 'SET_AUTO_LOCK_TIME': {
         return { success: true, data: nfts };
       }
 
-      // Settings
       case 'SETTINGS_UPDATE': {
         engine.updateSettings(validatedMessage.data);
         const state = engine.getState();
@@ -353,7 +279,6 @@ case 'SET_AUTO_LOCK_TIME': {
         return { success: true, data: settings };
       }
 
-      // Permissions
       case 'PERMISSION_REQUEST': {
         const origin = sender.origin || sender.url || 'unknown';
         const granted = await requestPermission({ ...validatedMessage.data, origin });
@@ -376,7 +301,6 @@ case 'SET_AUTO_LOCK_TIME': {
         return { success: true, data: permissions };
       }
 
-      // Signing
       case 'SIGN_MESSAGE': {
         const { message: msg, chain, address } = validatedMessage.data;
         const signature = await engine.signMessage(msg, chain, address);
