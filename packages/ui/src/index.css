@@ -2,39 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: dark;
-  background-color: #1a1a1a;
-}
-
-body {
-  margin: 0;
-  min-width: 360px;
-  min-height: 600px;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-[#1a1625] via-[#2d1b3d] to-[#1a1625] text-white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  }
 }
 
 @layer components {
+  .card {
+    @apply bg-gradient-to-br from-[#2d1b3d] to-[#1f1529] rounded-2xl p-4 border border-purple-900/30 shadow-xl;
+  }
+  
   .btn-primary {
-    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+    @apply bg-gradient-to-r from-[#AB9FF2] to-[#9945FF] hover:from-[#9945FF] hover:to-[#7929E8] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-purple-500/50;
   }
   
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+    @apply bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 border border-white/10;
   }
   
-  .input-field {
-    @apply w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500;
-  }
-  
-  .card {
-    @apply bg-gray-800 rounded-lg p-4 border border-gray-700;
+  .input {
+    @apply bg-white/5 border border-purple-500/30 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all;
   }
 }
