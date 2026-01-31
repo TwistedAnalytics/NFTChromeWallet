@@ -140,11 +140,11 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     try {
       // Use YOUR custom RPC endpoint FIRST
       const rpcEndpoints = [
-        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe',
-        'https://public.rpc.solanavibestation.com/',
         'https://rpc.helius.xyz/?api-key=647bbd34-42b3-418b-bf6c-c3a40813b41c',
+        'https://solana-rpc.publicnode.com',
+        'https://public.rpc.solanavibestation.com/',
         'https://go.getblock.us/86aac42ad4484f3c813079afc201451c',
-        'https://solana-rpc.publicnode.com'
+        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe'
       ];
       
       let fetchSuccess = false;
