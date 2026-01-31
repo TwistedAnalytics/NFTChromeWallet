@@ -130,7 +130,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-     case 'GET_BALANCE': {
+      case 'GET_BALANCE': {
         const state = engine.getState();
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
