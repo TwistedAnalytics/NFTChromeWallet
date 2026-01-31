@@ -181,16 +181,25 @@ export class Vault {
     }
   }
 
+  
   /**
    * Start auto-lock timer
    */
-  private startAutoLockTimer(): void {
-    this.clearAutoLockTimer();
-    this.autoLockTimer = setTimeout(() => {
-      this.lock();
-    }, this.autoLockMinutes * 60 * 1000);
-  }
-
+    private startAutoLockTimer(): void {
+      this.clearAutoLockTimer();
+  
+    // Save the unlock time for persistence across popup opens/closes
+    const unlockUntil = Date.now() + (this.autoLockMinutes * 60 * 1000);
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        chrome.storage.session.set({ unlockUntil }).catch(() => {});
+      }
+  
+      this.autoLockTimer = setTimeout(() => {
+        this.lock();
+      }, this.autoLockMinutes * 60 * 1000);
+    }
+  
+  
   /**
    * Reset auto-lock timer
    */
