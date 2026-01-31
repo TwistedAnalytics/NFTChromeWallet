@@ -165,33 +165,6 @@ export const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* NFTs Section }
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Collectibles</h2>
-            <button 
-              onClick={() => navigate('gallery')}
-              className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
-            >
-              View All →
-            </button>
-          </div>
-          
-          <button
-            onClick={() => navigate('gallery')}
-            className="w-full card hover:bg-white/5 transition-all group"
-          >
-            <div className="flex items-center justify-center py-8 text-gray-400">
-              <div className="text-center">
-                <svg className="w-12 h-12 mx-auto mb-2 text-purple-400 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm">View your NFT collection</p>
-              </div>
-            </div>
-          </button>
-        </div>*/
-
         {/* Activity Button */}
         <div className="mt-6">
           <button className="w-full card hover:bg-white/5 transition-all group py-4">
