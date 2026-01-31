@@ -125,114 +125,121 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'GET_BALANCE': {
-        const state = engine.getState();
-        const solAccount = engine.getCurrentAccount('solana');
-        const ethAccount = engine.getCurrentAccount('ethereum');
-        
-        console.log('GET_BALANCE - SOL account:', solAccount?.address);
-        console.log('GET_BALANCE - ETH account:', ethAccount?.address);
-        
-        let solBalance = '0.000000000';
-        let ethBalance = '0.000000000';
-        
-        // Fetch SOL balance from Solana
-        if (solAccount && state.isUnlocked) {
-          try {
-            // Try multiple RPC endpoints for reliability
-            const rpcEndpoints = [
-              'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe',
-              'https://solana-mainnet.g.alchemy.com/v2/demo',
-              'https://rpc.ankr.com/solana',
-              'https://solana.public-rpc.com'
-            ];
-            
-            let fetchSuccess = false;
-            for (const solanaRpc of rpcEndpoints) {
-              try {
-                console.log(`Trying Solana RPC: ${solanaRpc}`);
-                const response = await fetch(solanaRpc, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    id: 1,
-                    method: 'getBalance',
-                    params: [solAccount.address]
-                  })
-                });
-                
-                const data = await response.json();
-                console.log('SOL balance response:', data);
-                
-                if (data.result?.value !== undefined) {
-                  const lamports = data.result.value;
-                  solBalance = (lamports / 1_000_000_000).toFixed(9);
-                  console.log(`SOL balance: ${lamports} lamports = ${solBalance} SOL`);
-                  fetchSuccess = true;
-                  break;
-                } else if (data.error) {
-                  console.error('RPC error:', data.error);
-                  continue;
-                }
-              } catch (rpcError) {
-                console.error(`Failed with ${solanaRpc}:`, rpcError);
-                continue;
-              }
-            }
-            
-            if (!fetchSuccess) {
-              console.error('All Solana RPC endpoints failed');
-            }
-          } catch (error) {
-            console.error('Failed to fetch SOL balance:', error);
-          }
-        } else {
-          console.log('Skipping SOL balance fetch:', { 
-            hasAccount: !!solAccount, 
-            isUnlocked: state.isUnlocked 
+  const state = engine.getState();
+  const solAccount = engine.getCurrentAccount('solana');
+  const ethAccount = engine.getCurrentAccount('ethereum');
+  
+  console.log('GET_BALANCE - SOL account:', solAccount?.address);
+  console.log('GET_BALANCE - ETH account:', ethAccount?.address);
+  
+  let solBalance = '0.000000000';
+  let ethBalance = '0.000000000';
+  
+  // Fetch SOL balance from Solana
+  if (solAccount && state.isUnlocked) {
+    try {
+      // Use YOUR custom RPC endpoint FIRST
+      const rpcEndpoints = [
+        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe',
+        'https://api.mainnet-beta.solana.com',
+        'https://rpc.ankr.com/solana'
+      ];
+      
+      let fetchSuccess = false;
+      for (const solanaRpc of rpcEndpoints) {
+        try {
+          console.log(`Trying Solana RPC: ${solanaRpc}`);
+          const response = await fetch(solanaRpc, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'getBalance',
+              params: [solAccount.address]
+            })
           });
-        }
-        
-        // Fetch ETH balance from Ethereum
-        if (ethAccount && state.isUnlocked) {
-          try {
-            const ethRpc = 'https://eth.llamarpc.com';
-            console.log('Fetching ETH balance for:', ethAccount.address);
-            const response = await fetch(ethRpc, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 1,
-                method: 'eth_getBalance',
-                params: [ethAccount.address, 'latest']
-              })
-            });
-            const data = await response.json();
-            console.log('ETH balance response:', data);
-            if (data.result) {
-              const weiBalance = BigInt(data.result);
-              ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
-              console.log('ETH balance calculated:', ethBalance);
-            }
-          } catch (error) {
-            console.error('Failed to fetch ETH balance:', error);
+          
+          if (!response.ok) {
+            console.error(`HTTP ${response.status}: ${response.statusText}`);
+            continue;
           }
+          
+          const data = await response.json();
+          console.log('SOL balance response:', data);
+          
+          if (data.result?.value !== undefined) {
+            const lamports = data.result.value;
+            solBalance = (lamports / 1_000_000_000).toFixed(9);
+            console.log(`SOL balance: ${lamports} lamports = ${solBalance} SOL`);
+            fetchSuccess = true;
+            break;
+          } else if (data.error) {
+            console.error('RPC error:', data.error);
+            continue;
+          }
+        } catch (rpcError) {
+          console.error(`Failed with ${solanaRpc}:`, rpcError);
+          continue;
         }
-        
-        // Check for balance changes and notify
-        if (solAccount && ethAccount) {
-          await checkBalanceChanges(solBalance, ethBalance, solAccount.address, ethAccount.address);
-        }
-        
-        return { 
-          success: true, 
-          data: { 
-            balance: solBalance,
-            ethBalance: ethBalance
-          } 
-        };
       }
+      
+      if (!fetchSuccess) {
+        console.error('All Solana RPC endpoints failed');
+      }
+    } catch (error) {
+      console.error('Failed to fetch SOL balance:', error);
+    }
+  } else {
+    console.log('Skipping SOL balance fetch:', { 
+      hasAccount: !!solAccount, 
+      isUnlocked: state.isUnlocked 
+    });
+  }
+  
+  // Fetch ETH balance from Ethereum
+  if (ethAccount && state.isUnlocked) {
+    try {
+      const ethRpc = 'https://eth.llamarpc.com';
+      console.log('Fetching ETH balance for:', ethAccount.address);
+      const response = await fetch(ethRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getBalance',
+          params: [ethAccount.address, 'latest']
+        })
+      });
+      const data = await response.json();
+      console.log('ETH balance response:', data);
+      if (data.result) {
+        const weiBalance = BigInt(data.result);
+        ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
+        console.log('ETH balance calculated:', ethBalance);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ETH balance:', error);
+    }
+  }
+  
+  // Check for balance changes and notify
+  if (solAccount && ethAccount) {
+    await checkBalanceChanges(solBalance, ethBalance, solAccount.address, ethAccount.address);
+  }
+  
+  return { 
+    success: true, 
+    data: { 
+      balance: solBalance,
+      ethBalance: ethBalance
+    } 
+  };
+}
 
       case 'GET_MNEMONIC': {
         const state = engine.getState();
