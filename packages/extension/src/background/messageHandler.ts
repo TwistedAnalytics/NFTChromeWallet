@@ -22,24 +22,8 @@ async function getWalletEngine(): Promise<WalletEngine> {
     // Load state from storage
     const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE, STORAGE_KEYS.VAULT_DATA]);
     const state = result[STORAGE_KEYS.WALLET_STATE];
-    const vaultData = result[STORAGE_KEYS.VAULT_DATA];
     
     walletEngine = new WalletEngine(state);
-    
-    // If wallet was unlocked, restore the session
-    if (state?.isUnlocked && vaultData) {
-      console.log('Restoring unlocked session...');
-      try {
-        // Re-unlock the vault to restore the session
-        await walletEngine.restoreSession(vaultData);
-        console.log('Session restored successfully');
-      } catch (error) {
-        console.error('Failed to restore session:', error);
-        // Mark as locked if restoration fails
-        walletEngine.lockWallet();
-        await saveWalletState(walletEngine.getState());
-      }
-    }
   }
   return walletEngine;
 }
