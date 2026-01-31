@@ -16,12 +16,23 @@ const STORAGE_KEYS = {
 /**
  * Get wallet engine (initialize if needed)
  */
+/**
+ * Get wallet engine (initialize if needed)
+ */
 async function getWalletEngine(): Promise<WalletEngine> {
   if (!walletEngine) {
     // Load state from storage
-    const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE]);
-    const state = result[STORAGE_KEYS.WALLET_STATE] || undefined;
+    const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE, STORAGE_KEYS.VAULT_DATA]);
+    const state = result[STORAGE_KEYS.WALLET_STATE];
+    const vaultData = result[STORAGE_KEYS.VAULT_DATA];
+    
     walletEngine = new WalletEngine(state);
+    
+    // If wallet was unlocked, try to restore the session
+    if (state?.isUnlocked && vaultData) {
+      console.log('Restoring unlocked session...');
+      // Session is already restored from state
+    }
   }
   return walletEngine;
 }
@@ -120,6 +131,11 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             isUnlocked: true
           } 
         };
+      }
+
+      // Keep service worker alive for unlocked wallet
+      if (state.isUnlocked) {
+        chrome.alarms.create('keepAlive', { periodInMinutes: 1 });
       }
 
 
