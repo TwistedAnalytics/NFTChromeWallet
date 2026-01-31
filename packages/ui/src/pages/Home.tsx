@@ -1,10 +1,10 @@
 import React from 'react';
 import { useWallet } from '../hooks/useWallet';
-import { useNavigate } from '../hooks/useNavigate';
+import { useNavigation } from '../hooks/useNavigate';
 
 export const Home: React.FC = () => {
-   const { address, ethAddress, balance, ethBalance } = useWallet();
-   const { navigate } = useNavigation();  // Changed from useNavigate()
+  const { address, ethAddress, balance, ethBalance } = useWallet();
+  const { navigate } = useNavigation();
 
   return (
     <div>
