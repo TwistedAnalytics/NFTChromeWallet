@@ -259,6 +259,16 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: { mnemonic } };
       }
 
+      case 'GET_PRIVATE_KEY': {
+      const state = engine.getState();
+      if (!state.isUnlocked) {
+        throw new Error('Wallet is locked');
+      }
+      const { chain } = validatedMessage.data;
+      const privateKey = engine.getPrivateKey(chain, 0);
+      return { success: true, data: { privateKey } };
+      }
+
       case 'SET_AUTO_LOCK_TIME': {
         const { minutes } = validatedMessage.data;
         engine.setAutoLockTime(minutes);
