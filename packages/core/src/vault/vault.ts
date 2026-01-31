@@ -146,24 +146,31 @@ async unlock(vaultData: VaultData, password: string): Promise<VaultContent> {
   }
 
   /**
-   * Sign message
-   */
-  async signMessage(message: string, chain: 'ethereum' | 'solana', accountIndex: number = 0): Promise<string> {
-    if (!this.unlocked || !this.content) {
-      throw new Error('Vault is locked');
-    }
+ * Sign message
+ */
+async signMessage(message: string, chain: 'ethereum' | 'solana', accountIndex: number = 0): Promise<string> {
+  if (!this.unlocked || !this.content) {
+    throw new Error('Vault is locked');
+  }
 
-    const account = this.content.accounts[chain][accountIndex];
-    if (!account) {
-      throw new Error('Account not found');
-    }
+  const account = this.content.accounts[chain][accountIndex];
+  if (!account) {
+    throw new Error('Account not found');
+  }
 
-    const messageHash = sha256(new TextEncoder().encode(message));
-    const privateKeyBytes = this.hexToBytes(account.privateKey);
+  const messageHash = sha256(new TextEncoder().encode(message));
+  const privateKeyBytes = this.hexToBytes(account.privateKey);
+  
+  if (chain === 'solana') {
+    // Solana uses Ed25519
+    const signature = ed25519.sign(messageHash, privateKeyBytes);
+    return this.bytesToHex(signature);
+  } else {
+    // Ethereum uses secp256k1
     const signature = secp256k1.sign(messageHash, privateKeyBytes);
-
     return signature.toCompactHex();
   }
+}
 
   /**
    * Sign transaction
@@ -197,42 +204,44 @@ async unlock(vaultData: VaultData, password: string): Promise<VaultContent> {
   }
 
   /**
-   * Generate accounts from seed
-   */
-  private generateAccounts(seed: Uint8Array): { ethereum: Account[]; solana: Account[] } {
-    const hdKey = HDKey.fromMasterSeed(seed);
+ * Generate accounts from seed
+ */
+private generateAccounts(seed: Uint8Array): { ethereum: Account[]; solana: Account[] } {
+  const hdKey = HDKey.fromMasterSeed(seed);
 
-    // Ethereum account (m/44'/60'/0'/0/0)
-    const ethPath = "m/44'/60'/0'/0/0";
-    const ethKey = hdKey.derive(ethPath);
-    const ethPrivateKey = ethKey.privateKey!;
-    const ethPublicKey = secp256k1.getPublicKey(ethPrivateKey, false);
-    const ethAddress = this.publicKeyToEthAddress(ethPublicKey);
+  // Ethereum account (m/44'/60'/0'/0/0)
+  const ethPath = "m/44'/60'/0'/0/0";
+  const ethKey = hdKey.derive(ethPath);
+  const ethPrivateKey = ethKey.privateKey!;
+  const ethPublicKey = secp256k1.getPublicKey(ethPrivateKey, false);
+  const ethAddress = this.publicKeyToEthAddress(ethPublicKey);
 
-    // Solana account (m/44'/501'/0'/0')
-    const solPath = "m/44'/501'/0'/0'";
-    const solKey = hdKey.derive(solPath);
-    const solPrivateKey = solKey.privateKey!;
-    const solPublicKey = secp256k1.getPublicKey(solPrivateKey, true);
-    const solAddress = this.bytesToBase58(solPublicKey);
+  // Solana account (m/44'/501'/0'/0') - Uses Ed25519
+  const solPath = "m/44'/501'/0'/0'";
+  const solKey = hdKey.derive(solPath);
+  const solPrivateKey = solKey.privateKey!;
+  
+  // Solana uses Ed25519, not secp256k1!
+  const solPublicKey = ed25519.getPublicKey(solPrivateKey);
+  const solAddress = this.bytesToBase58(solPublicKey);
 
-    return {
-      ethereum: [{
-        address: ethAddress,
-        publicKey: this.bytesToHex(ethPublicKey),
-        privateKey: this.bytesToHex(ethPrivateKey),
-        derivationPath: ethPath,
-        index: 0,
-      }],
-      solana: [{
-        address: solAddress,
-        publicKey: this.bytesToHex(solPublicKey),
-        privateKey: this.bytesToHex(solPrivateKey),
-        derivationPath: solPath,
-        index: 0,
-      }],
-    };
-  }
+  return {
+    ethereum: [{
+      address: ethAddress,
+      publicKey: this.bytesToHex(ethPublicKey),
+      privateKey: this.bytesToHex(ethPrivateKey),
+      derivationPath: ethPath,
+      index: 0,
+    }],
+    solana: [{
+      address: solAddress,
+      publicKey: this.bytesToHex(solPublicKey),
+      privateKey: this.bytesToHex(solPrivateKey),
+      derivationPath: solPath,
+      index: 0,
+    }],
+  };
+}
 
   /**
    * XOR encryption/decryption
