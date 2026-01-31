@@ -118,7 +118,7 @@ export const useWallet = () => {
     if (response.success) {
       store.setConnectedSites(store.connectedSites.filter(site => site !== origin));
     }
-  }, [send, store.connectedSites, store.setConnectedSites]);
+  }, [send, store.setConnectedSites]);
 
   return {
     ...store,
