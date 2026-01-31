@@ -25,10 +25,19 @@ async function getWalletEngine(): Promise<WalletEngine> {
     
     walletEngine = new WalletEngine(state);
     
-    // If wallet was unlocked, try to restore the session
+    // If wallet was unlocked, restore the session
     if (state?.isUnlocked && vaultData) {
       console.log('Restoring unlocked session...');
-      // Session is already restored from state
+      try {
+        // Re-unlock the vault to restore the session
+        await walletEngine.restoreSession(vaultData);
+        console.log('Session restored successfully');
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        // Mark as locked if restoration fails
+        walletEngine.lockWallet();
+        await saveWalletState(walletEngine.getState());
+      }
     }
   }
   return walletEngine;
@@ -130,7 +139,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-      case 'GET_BALANCE': {
+     case 'GET_BALANCE': {
         const state = engine.getState();
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
