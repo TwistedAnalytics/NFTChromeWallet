@@ -165,7 +165,7 @@ export const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* NFTs Section */}
+        {/* NFTs Section }
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Collectibles</h2>
@@ -190,7 +190,7 @@ export const Home: React.FC = () => {
               </div>
             </div>
           </button>
-        </div>
+        </div>*/
 
         {/* Activity Button */}
         <div className="mt-6">
