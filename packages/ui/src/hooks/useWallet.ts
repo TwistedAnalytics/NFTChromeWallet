@@ -15,19 +15,27 @@ export const useWallet = () => {
     console.log('Balance response:', balanceResponse);
     
     if (balanceResponse.success && balanceResponse.data) {
-      store.setBalance(balanceResponse.data.balance);
-      store.setEthBalance(balanceResponse.data.ethBalance);
+      const solBalance = balanceResponse.data.balance;
+      const ethBalance = balanceResponse.data.ethBalance;
+      
+      console.log('Setting balances - SOL:', solBalance, 'ETH:', ethBalance);
+      
+      store.setBalance(solBalance);
+      store.setEthBalance(ethBalance);
+      
+      // Force a small delay to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-    // Fetch connected sites
-    const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
-    if (sitesResponse.success && sitesResponse.data) {
-      store.setConnectedSites(sitesResponse.data.sites);
+      // Fetch connected sites
+      const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
+      if (sitesResponse.success && sitesResponse.data) {
+        store.setConnectedSites(sitesResponse.data.sites);
+        }
+      } catch (error) {
+      console.error('Initialize error:', error);
       }
-    } catch (error) {
-    console.error('Initialize error:', error);
-    }
-  }, [send]);
+    }, [send, store]);
   
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
   store.setLoading(true);
