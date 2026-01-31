@@ -41,8 +41,9 @@ export interface VaultContent {
  */
 export interface VaultData {
   version: number;
-  salt: number[];
-  encryptedContent: number[];
+  salt: number[] | string;  // Support both formats
+  encryptedContent?: number[];  // New format
+  encrypted?: string;  // Old format (for migration)
 }
 
 /**
