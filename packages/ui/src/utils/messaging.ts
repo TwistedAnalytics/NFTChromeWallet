@@ -8,7 +8,7 @@ export const sendMessage = <T = any>(message: Message): Promise<MessageResponse<
         success: false,
         error: `Request timeout for ${message.type}`,
       });
-    }, 5000); // 5 second timeout
+    }, 10000); // 5 second timeout
 
     try {
       chrome.runtime.sendMessage(message, (response: MessageResponse<T>) => {
