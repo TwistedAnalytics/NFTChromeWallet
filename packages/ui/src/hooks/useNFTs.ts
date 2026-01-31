@@ -4,13 +4,13 @@ import { useMessaging } from './useMessaging';
 import type { NFT } from '@nft-wallet/shared';
 
 export const useNFTs = () => {
-  const { nfts, setNFTs, isUnlocked, address } = useWalletStore();
+  const { nfts, setNFTs, isUnlocked, address, ethAddress } = useWalletStore();
   const { send } = useMessaging();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNFTs = useCallback(async () => {
-  if (!isUnlocked || !address) return;
+ const fetchNFTs = useCallback(async () => {
+  if (!isUnlocked || (!address && !ethAddress)) return;
 
   setIsLoading(true);
   setError(null);
@@ -54,8 +54,10 @@ export const useNFTs = () => {
   }, [send, fetchNFTs]);
 
   useEffect(() => {
-  fetchNFTs();
-  }, [isUnlocked, address]);  // Only re-fetch when wallet state changes
+  if (isUnlocked && (address || ethAddress)) {
+    fetchNFTs();
+  }
+}, [isUnlocked, address, ethAddress]);
 
   return {
     nfts,
