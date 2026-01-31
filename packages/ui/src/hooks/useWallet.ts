@@ -35,7 +35,7 @@ export const useWallet = () => {
       } catch (error) {
       console.error('Initialize error:', error);
       }
-    }, [send, store]);
+    }, [send]);
   
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
   store.setLoading(true);
