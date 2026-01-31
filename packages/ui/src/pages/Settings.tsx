@@ -7,12 +7,14 @@ export const Settings: React.FC = () => {
   const { navigate } = useNavigation();
   const [showSeed, setShowSeed] = useState(false);
   const [seed, setSeed] = useState('');
-  const [autoLockTime, setAutoLockTime] = useState(15);
+  const [showSolPrivateKey, setShowSolPrivateKey] = useState(false);
+  const [solPrivateKey, setSolPrivateKey] = useState('');
+  const [showEthPrivateKey, setShowEthPrivateKey] = useState(false);
+  const [ethPrivateKey, setEthPrivateKey] = useState('');
 
   const handleShowSeed = async () => {
     if (!showSeed) {
       try {
-        // Get the actual mnemonic from background
         const response = await chrome.runtime.sendMessage({ type: 'GET_MNEMONIC' });
         if (response.success) {
           setSeed(response.data.mnemonic);
@@ -30,73 +32,146 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleLock = async () => {
-    await lockWallet();
+  const handleShowSolPrivateKey = async () => {
+    if (!showSolPrivateKey) {
+      try {
+        const response = await chrome.runtime.sendMessage({ 
+          type: 'GET_PRIVATE_KEY',
+          data: { chain: 'solana' }
+        });
+        if (response.success) {
+          setSolPrivateKey(response.data.privateKey);
+          setShowSolPrivateKey(true);
+        } else {
+          alert('Failed to retrieve private key');
+        }
+      } catch (error) {
+        console.error('Error getting private key:', error);
+        alert('Error retrieving private key');
+      }
+    } else {
+      setShowSolPrivateKey(false);
+      setSolPrivateKey('');
+    }
   };
 
-  const handleAutoLockChange = async (minutes: number) => {
-    setAutoLockTime(minutes);
-    await chrome.runtime.sendMessage({ 
-      type: 'SET_AUTO_LOCK_TIME', 
-      data: { minutes } 
-    });
+  const handleShowEthPrivateKey = async () => {
+    if (!showEthPrivateKey) {
+      try {
+        const response = await chrome.runtime.sendMessage({ 
+          type: 'GET_PRIVATE_KEY',
+          data: { chain: 'ethereum' }
+        });
+        if (response.success) {
+          setEthPrivateKey(response.data.privateKey);
+          setShowEthPrivateKey(true);
+        } else {
+          alert('Failed to retrieve private key');
+        }
+      } catch (error) {
+        console.error('Error getting private key:', error);
+        alert('Error retrieving private key');
+      }
+    } else {
+      setShowEthPrivateKey(false);
+      setEthPrivateKey('');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
   };
 
   return (
-    <div>
-      <button
-        onClick={() => navigate('home')}
-        className="mb-4 text-indigo-400 hover:text-indigo-300 transition-colors"
-      >
-        ← Back
-      </button>
-
+    <div className="p-4">
       <h2 className="text-2xl font-bold mb-6">Settings</h2>
 
-      <div className="space-y-4">
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-3">Backup Seed Phrase</h3>
+      {/* Security Section */}
+      <div className="card mb-4">
+        <h3 className="text-lg font-semibold mb-3 text-purple-400">Security</h3>
+        
+        {/* Recovery Phrase */}
+        <div className="mb-4">
           <button
             onClick={handleShowSeed}
-            className="w-full btn-secondary mb-2"
+            className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left flex items-center justify-between"
           >
-            {showSeed ? 'Hide' : 'Show'} Seed Phrase
+            <span className="font-medium">Recovery Phrase</span>
+            <span className="text-gray-400">{showSeed ? '👁️ Hide' : '👁️‍🗨️ Show'}</span>
           </button>
-          {showSeed && seed && (
-            <div className="mt-3 p-4 bg-yellow-900/30 border border-yellow-600 rounded-lg">
-              <p className="text-xs text-yellow-200 mb-2">⚠️ Never share your seed phrase!</p>
-              <p className="text-sm font-mono bg-gray-800 p-3 rounded break-all">{seed}</p>
+          {showSeed && (
+            <div className="mt-3 p-4 bg-gray-800 rounded-lg border border-yellow-500">
+              <p className="text-yellow-400 text-sm mb-2">⚠️ Never share your recovery phrase!</p>
+              <p className="text-sm break-all font-mono bg-gray-900 p-3 rounded">{seed}</p>
+              <button
+                onClick={() => copyToClipboard(seed)}
+                className="mt-2 text-sm text-purple-400 hover:text-purple-300"
+              >
+                📋 Copy to Clipboard
+              </button>
             </div>
           )}
         </div>
 
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-3">Auto-Lock Timer</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[10, 15, 30, 60].map((minutes) => (
+        {/* Solana Private Key */}
+        <div className="mb-4">
+          <button
+            onClick={handleShowSolPrivateKey}
+            className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left flex items-center justify-between"
+          >
+            <span className="font-medium">Solana Private Key</span>
+            <span className="text-gray-400">{showSolPrivateKey ? '👁️ Hide' : '👁️‍🗨️ Show'}</span>
+          </button>
+          {showSolPrivateKey && (
+            <div className="mt-3 p-4 bg-gray-800 rounded-lg border border-red-500">
+              <p className="text-red-400 text-sm mb-2">🔐 Keep this private key secret!</p>
+              <p className="text-sm break-all font-mono bg-gray-900 p-3 rounded">{solPrivateKey}</p>
               <button
-                key={minutes}
-                onClick={() => handleAutoLockChange(minutes)}
-                className={`py-2 px-4 rounded-lg transition-colors ${
-                  autoLockTime === minutes
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
+                onClick={() => copyToClipboard(solPrivateKey)}
+                className="mt-2 text-sm text-purple-400 hover:text-purple-300"
               >
-                {minutes} min
+                📋 Copy to Clipboard
               </button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className="card">
+        {/* Ethereum Private Key */}
+        <div className="mb-4">
           <button
-            onClick={handleLock}
-            className="w-full btn-secondary"
+            onClick={handleShowEthPrivateKey}
+            className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors text-left flex items-center justify-between"
           >
-            Lock Wallet Now
+            <span className="font-medium">Ethereum Private Key</span>
+            <span className="text-gray-400">{showEthPrivateKey ? '👁️ Hide' : '👁️‍🗨️ Show'}</span>
           </button>
+          {showEthPrivateKey && (
+            <div className="mt-3 p-4 bg-gray-800 rounded-lg border border-red-500">
+              <p className="text-red-400 text-sm mb-2">🔐 Keep this private key secret!</p>
+              <p className="text-sm break-all font-mono bg-gray-900 p-3 rounded">{ethPrivateKey}</p>
+              <button
+                onClick={() => copyToClipboard(ethPrivateKey)}
+                className="mt-2 text-sm text-purple-400 hover:text-purple-300"
+              >
+                📋 Copy to Clipboard
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Actions */}
+      <div className="card">
+        <button
+          onClick={async () => {
+            await lockWallet();
+            navigate('home');
+          }}
+          className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
+        >
+          🔒 Lock Wallet
+        </button>
       </div>
     </div>
   );
