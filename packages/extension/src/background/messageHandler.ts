@@ -180,7 +180,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           
           if (data.result?.value !== undefined) {
             const lamports = data.result.value;
-            solBalance = (lamports / 1_000_000_000).toFixed(6);
+            solBalance = (lamports / 1_000_000_000).toFixed(9);
             console.log(`SOL balance: ${lamports} lamports = ${solBalance} SOL`);
             fetchSuccess = true;
             break;
@@ -224,7 +224,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       console.log('ETH balance response:', data);
       if (data.result) {
         const weiBalance = BigInt(data.result);
-        ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
+        ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
         console.log('ETH balance calculated:', ethBalance);
       }
     } catch (error) {
