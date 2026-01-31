@@ -201,31 +201,65 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   }
   
   // Fetch ETH balance from Ethereum
-  if (ethAccount && state.isUnlocked) {
-    try {
-      const ethRpc = 'https://eth.llamarpc.com';
-      console.log('Fetching ETH balance for:', ethAccount.address);
-      const response = await fetch(ethRpc, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'eth_getBalance',
-          params: [ethAccount.address, 'latest']
-        })
-      });
-      const data = await response.json();
-      console.log('ETH balance response:', data);
-      if (data.result) {
-        const weiBalance = BigInt(data.result);
-        ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
-        console.log('ETH balance calculated:', ethBalance);
+if (ethAccount && state.isUnlocked) {
+  try {
+    // Try multiple reliable ETH RPC endpoints
+    const ethRpcEndpoints = [
+      'https://eth.llamarpc.com',
+      'https://rpc.ankr.com/eth',
+      'https://ethereum.publicnode.com',
+      'https://cloudflare-eth.com'
+    ];
+    
+    let ethFetchSuccess = false;
+    for (const ethRpc of ethRpcEndpoints) {
+      try {
+        console.log('Fetching ETH balance from:', ethRpc, 'for address:', ethAccount.address);
+        const response = await fetch(ethRpc, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_getBalance',
+            params: [ethAccount.address, 'latest']
+          })
+        });
+        
+        if (!response.ok) {
+          console.error(`ETH RPC HTTP ${response.status}: ${response.statusText}`);
+          continue;
+        }
+        
+        const data = await response.json();
+        console.log('ETH balance response:', data);
+        
+        if (data.result) {
+          const weiBalance = BigInt(data.result);
+          ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
+          console.log('ETH balance calculated:', ethBalance);
+          ethFetchSuccess = true;
+          break;
+        } else if (data.error) {
+          console.error('ETH RPC error:', data.error);
+          continue;
+        }
+      } catch (ethRpcError) {
+        console.error(`Failed with ${ethRpc}:`, ethRpcError);
+        continue;
       }
-    } catch (error) {
-      console.error('Failed to fetch ETH balance:', error);
     }
+    
+    if (!ethFetchSuccess) {
+      console.error('All Ethereum RPC endpoints failed');
+    }
+  } catch (error) {
+    console.error('Failed to fetch ETH balance:', error);
   }
+}
   
   // Check for balance changes and notify
   if (solAccount && ethAccount) {
