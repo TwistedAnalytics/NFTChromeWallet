@@ -89,3 +89,4 @@ export const NFTDetail: React.FC<NFTDetailProps> = ({ nft, onBack, onSend }) => 
     </div>
   </div>
 );
+};
