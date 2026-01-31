@@ -5,6 +5,7 @@ import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/b
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { HDKey } from '@scure/bip32';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { ed25519 } from '@noble/curves/ed25519';  // ADD THIS IMPORT
 import type { VaultData, VaultContent, Account } from '@nft-wallet/shared';
 
 export class Vault {
