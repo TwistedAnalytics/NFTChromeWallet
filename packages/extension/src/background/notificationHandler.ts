@@ -97,26 +97,3 @@ async function showNotification(title: string, message: string): Promise<void> {
     console.error('Failed to show notification:', error);
   }
 }
-
-/**
- * Start periodic balance checking (every 30 seconds)
- */
-export function startBalanceMonitoring(
-  getBalanceFunc: () => Promise<{ solBalance: string; ethBalance: string; solAddress: string; ethAddress: string }>
-): void {
-  // Check immediately
-  getBalanceFunc().then(({ solBalance, ethBalance, solAddress, ethAddress }) => {
-    checkBalanceChanges(solBalance, ethBalance, solAddress, ethAddress);
-  });
-
-  // Set up periodic checking
-  chrome.alarms.create('balanceCheck', { periodInMinutes: 0.5 }); // Every 30 seconds
-
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'balanceCheck') {
-      getBalanceFunc().then(({ solBalance, ethBalance, solAddress, ethAddress }) => {
-        checkBalanceChanges(solBalance, ethBalance, solAddress, ethAddress);
-      });
-    }
-  });
-}
