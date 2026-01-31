@@ -5,7 +5,7 @@ export class SolanaProvider {
   private requestId = 0;
   private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
   public isVaultNFT = true;
-  public isPhantom = false; // Don't impersonate Phantom
+  public isPhantom = true; // Phantom compatibility for Magic Eden
   public publicKey: any = null;
 
   constructor() {
