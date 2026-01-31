@@ -55,28 +55,51 @@ export class Vault {
   }
 
   /**
-   * Unlock vault with password
-   */
-  async unlock(vaultData: VaultData, password: string): Promise<VaultContent> {
-    // Derive encryption key from password
-    const salt = new Uint8Array(vaultData.salt);
-    this.encryptionKey = pbkdf2(sha256, password, salt, { c: 100000, dkLen: 32 });
+ * Unlock vault with password
+ */
+async unlock(vaultData: VaultData, password: string): Promise<VaultContent> {
+  let salt: Uint8Array;
+  let encryptedContent: Uint8Array;
 
-    // Decrypt content
-    const encryptedContent = new Uint8Array(vaultData.encryptedContent);
-    const decryptedBytes = this.xorEncrypt(encryptedContent, this.encryptionKey);
-    
-    try {
-      const contentJson = new TextDecoder().decode(decryptedBytes);
-      this.content = JSON.parse(contentJson);
-      this.unlocked = true;
-      this.startAutoLockTimer();
-      return this.content!;
-    } catch (error) {
-      this.encryptionKey = null;
-      throw new Error('Invalid password');
-    }
+  // Handle old format (base64 strings) and new format (number arrays)
+  if (typeof vaultData.salt === 'string') {
+    // Old format - convert from base64 string
+    console.log('Converting old vault format to new format...');
+    salt = Uint8Array.from(atob(vaultData.salt), c => c.charCodeAt(0));
+  } else {
+    // New format - number array
+    salt = new Uint8Array(vaultData.salt);
   }
+
+  // Check if we have old 'encrypted' field or new 'encryptedContent' field
+  const encryptedData = (vaultData as any).encrypted || (vaultData as any).encryptedContent;
+  
+  if (typeof encryptedData === 'string') {
+    // Old format - convert from base64 string
+    encryptedContent = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+  } else {
+    // New format - number array
+    encryptedContent = new Uint8Array(encryptedData);
+  }
+
+  // Derive encryption key from password
+  this.encryptionKey = pbkdf2(sha256, password, salt, { c: 100000, dkLen: 32 });
+
+  // Decrypt content
+  const decryptedBytes = this.xorEncrypt(encryptedContent, this.encryptionKey);
+  
+  try {
+    const contentJson = new TextDecoder().decode(decryptedBytes);
+    this.content = JSON.parse(contentJson);
+    this.unlocked = true;
+    this.startAutoLockTimer();
+    return this.content!;
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    this.encryptionKey = null;
+    throw new Error('Invalid password');
+  }
+}
 
   /**
    * Lock vault
