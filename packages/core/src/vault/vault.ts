@@ -117,6 +117,26 @@ export class Vault {
   }
 
   /**
+   * Check if session is still valid
+   */
+  async isSessionValid(): Promise<boolean> {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      return this.isUnlocked();
+    }
+  
+    try {
+      const result = await chrome.storage.session.get(['unlockUntil']);
+      if (result.unlockUntil && Date.now() < result.unlockUntil) {
+        return true;
+      }
+    } catch (error) {
+      console.error('Error checking session:', error);
+    }
+  
+    return false;
+  }
+
+  /**
    * Get mnemonic (only when unlocked)
    */
   getMnemonic(): string {
