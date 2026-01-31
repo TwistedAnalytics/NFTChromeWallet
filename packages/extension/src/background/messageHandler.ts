@@ -350,38 +350,61 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       case 'GET_NFTS': {
   const state = engine.getState();
   const solAccount = engine.getCurrentAccount('solana');
+  const ethAccount = engine.getCurrentAccount('ethereum');
   
-  if (!solAccount || !state.isUnlocked) {
+  if (!state.isUnlocked) {
     return { success: true, data: { nfts: [] } };
   }
 
   try {
-    // Fetch from Helius
-    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
-    const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+    const allNfts: any[] = [];
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'nft-fetch',
-        method: 'getAssetsByOwner',
-        params: {
-          ownerAddress: solAccount.address,
-          page: 1,
-          limit: 1000
-        }
-      })
-    });
-
-    const data = await response.json();
-    const nfts = data.result?.items || [];
+    // Fetch Solana NFTs via Helius
+    if (solAccount) {
+      const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+      const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+      
+      const solResponse = await fetch(heliusUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'sol-nft',
+          method: 'getAssetsByOwner',
+          params: {
+            ownerAddress: solAccount.address,
+            page: 1,
+            limit: 1000
+          }
+        })
+      });
+      
+      const solData = await solResponse.json();
+      const solNfts = (solData.result?.items || []).map((nft: any) => ({
+        ...nft,
+        chain: 'solana'
+      }));
+      allNfts.push(...solNfts);
+    }
     
-    // Cache the results
-    await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: nfts });
+    // Fetch Ethereum NFTs via Alchemy
+    if (ethAccount) {
+      const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
+      const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+      
+      const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
+      const ethData = await ethResponse.json();
+      const ethNfts = (ethData.ownedNfts || []).map((nft: any) => ({
+        ...nft,
+        chain: 'ethereum'
+      }));
+      allNfts.push(...ethNfts);
+    }
     
-    return { success: true, data: { nfts } };
+    // Cache results
+    await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: allNfts });
+    
+    return { success: true, data: { nfts: allNfts } };
   } catch (error) {
     console.error('NFT fetch error:', error);
     // Return cached on error
