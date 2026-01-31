@@ -9,32 +9,31 @@ import { NFTView } from './pages/NFTView';
 import { Send } from './pages/Send';
 import { Settings } from './pages/Settings';
 import { useWallet } from './hooks/useWallet';
-import { useNavigation } from './hooks/useNavigate';
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import './index.css';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { isUnlocked, address, isLoading, createWallet, unlockWallet } = useWallet();
-  const { state, navigate } = useNavigation();
+  const { state } = useNavigation();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
   useEffect(() => {
-  const checkWallet = async () => {
-    try {
-      // Check if vault exists in storage
-      const result = await chrome.storage.local.get(['vaultData']);
-      const hasVault = !!result.vaultData;
-      console.log('Has vault:', hasVault, 'isUnlocked:', isUnlocked);
-      setHasWallet(hasVault);
-    } catch (error) {
-      console.error('Error checking wallet:', error);
-      setHasWallet(false);
+    const checkWallet = async () => {
+      try {
+        const result = await chrome.storage.local.get(['vaultData']);
+        const hasVault = !!result.vaultData;
+        console.log('Has vault:', hasVault, 'isUnlocked:', isUnlocked);
+        setHasWallet(hasVault);
+      } catch (error) {
+        console.error('Error checking wallet:', error);
+        setHasWallet(false);
+      }
+    };
+    
+    if (!isLoading) {
+      checkWallet();
     }
-  };
-  
-  if (!isLoading) {
-    checkWallet();
-  }
-}, [isLoading, isUnlocked]);
+  }, [isLoading, isUnlocked]);
 
   if (isLoading || hasWallet === null) {
     return (
@@ -81,6 +80,14 @@ const App: React.FC = () => {
   };
 
   return <Layout>{renderPage()}</Layout>;
+};
+
+const App: React.FC = () => {
+  return (
+    <NavigationProvider>
+      <AppContent />
+    </NavigationProvider>
+  );
 };
 
 const root = document.getElementById('root');
