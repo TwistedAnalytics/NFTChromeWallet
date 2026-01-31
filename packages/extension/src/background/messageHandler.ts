@@ -348,14 +348,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'GET_NFTS': {
-  const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
-  const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
+        const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
+        const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
   
-  // Check for new NFTs and notify
-  await checkNFTChanges(nfts.length);
+        await checkNFTChanges(nfts.length);
   
-  return { success: true, data: { nfts } };
-}
+        return { success: true, data: { nfts } };
+      }
 
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
