@@ -46,6 +46,11 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     const validatedMessage = MessageSchema.parse(message);
     const engine = await getWalletEngine();
 
+    // Reset activity timer on any message (user interaction)
+    if (engine.getState().isUnlocked) {
+      engine.resetActivity();
+    }
+
     switch (validatedMessage.type) {
         
       // Wallet lifecycle
