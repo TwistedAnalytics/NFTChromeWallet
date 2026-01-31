@@ -130,6 +130,23 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
+      /**
+     * Restore session from stored vault data (for service worker restarts)
+     */
+      async restoreSession(vaultData: VaultData): Promise<void> {
+      // The vault data contains the encrypted content
+      // We need to restore it without re-unlocking
+      this.state = {
+        ...this.state,
+        isInitialized: true,
+        isUnlocked: true,
+        vaultData,
+      };
+  
+      // Note: The accounts are already in the state from storage
+      console.log('Session restored with accounts:', this.state.accounts);
+      }
+
       case 'GET_BALANCE': {
         const state = engine.getState();
         const solAccount = engine.getCurrentAccount('solana');
