@@ -6,6 +6,8 @@
   body {
   @apply bg-gradient-to-br from-[#1a1625] via-[#2d1b3d] to-[#1a1625] text-white;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  width: 480px;
+  min-height: 600px;
   }
 }
 
