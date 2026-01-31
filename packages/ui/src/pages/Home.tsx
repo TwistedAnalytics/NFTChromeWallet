@@ -1,22 +1,14 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useMessaging } from '../hooks/useMessaging';
 
 export const Home: React.FC = () => {
-  const { address, ethAddress, balance, ethBalance } = useWallet();
+  const { address, ethAddress, balance, ethBalance, initialize } = useWallet();
   const { navigate } = useNavigation();
-  const { send } = useMessaging();
 
-  const refreshBalances = useCallback(async () => {
-    console.log('Refreshing balances...');
-    const balanceResponse = await send({ type: 'GET_BALANCE' });
-    console.log('Fresh balance:', balanceResponse);
-    if (balanceResponse.success && balanceResponse.data) {
-      // Force re-render by reloading the popup
-      window.location.reload();
-    }
-  }, [send]);
+  const handleRefresh = () => {
+    initialize();
+  };
 
   return (
     <div>
@@ -24,7 +16,7 @@ export const Home: React.FC = () => {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Balances</h2>
           <button
-            onClick={refreshBalances}
+            onClick={handleRefresh}
             className="text-xs text-gray-400 hover:text-white transition-colors px-2 py-1 bg-gray-700 rounded"
           >
             🔄 Refresh
