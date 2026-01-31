@@ -191,6 +191,16 @@ getMnemonic(): string {
 }
 
   /**
+ * Get private key (only when unlocked)
+ */
+getPrivateKey(chain: 'ethereum' | 'solana', accountIndex: number = 0): string {
+  if (!this.vault) {
+    throw new Error('Vault not initialized');
+  }
+  return this.vault.getPrivateKey(chain, accountIndex);
+}
+
+  /**
    * Set auto-lock time
    */
   setAutoLockTime(minutes: number): void {
