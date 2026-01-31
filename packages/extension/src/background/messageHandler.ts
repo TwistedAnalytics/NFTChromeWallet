@@ -153,6 +153,21 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       console.error('Failed to fetch SOL balance:', error);
     }
   }
+
+  case 'GET_MNEMONIC': {
+  const state = engine.getState();
+  if (!state.isUnlocked) {
+    throw new Error('Wallet is locked');
+  }
+  const mnemonic = engine.getMnemonic();
+  return { success: true, data: { mnemonic } };
+  }
+
+  case 'SET_AUTO_LOCK_TIME': {
+    const { minutes } = validatedMessage.data;
+    engine.setAutoLockTime(minutes);
+    return { success: true };
+  }
   
   // Fetch ETH balance from Ethereum
   if (ethAccount && state.isUnlocked) {
