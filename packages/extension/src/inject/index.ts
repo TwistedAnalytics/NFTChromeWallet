@@ -13,6 +13,8 @@ declare global {
   interface Window {
     ethereum?: any;
     vaultNFT?: any;
+    solana?: any;
+    phantom?: any;
   }
 }
 
@@ -22,9 +24,21 @@ window.vaultNFT = {
   solana: solanaProvider,
 };
 
-// Set window.ethereum if not already set (don't override existing providers)
+// Inject as Phantom for compatibility
+if (!window.solana) {
+  window.solana = solanaProvider;
+}
+
+// Set window.ethereum if not already set
 if (!window.ethereum) {
   window.ethereum = ethereumProvider;
+}
+
+// Add phantom property for detection
+if (!window.phantom) {
+  window.phantom = {
+    solana: solanaProvider,
+  };
 }
 
 // Announce provider using EIP-6963
