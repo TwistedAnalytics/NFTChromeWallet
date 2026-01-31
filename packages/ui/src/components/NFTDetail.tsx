@@ -55,33 +55,35 @@ export const NFTDetail: React.FC<NFTDetailProps> = ({ nft, onBack, onSend }) => 
         </div>
       )}
 
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-400 mb-2">Details</h3>
-        <div className="space-y-2 text-sm">
-          {nft.chain && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Blockchain:</span>
-              <span className="font-semibold capitalize">{nft.chain}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-gray-400">Contract Address:</span>
-            <span className="font-mono text-xs">
-              {nft.contract?.address?.slice(0, 6)}...{nft.contract?.address?.slice(-4)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Token ID:</span>
-            <span className="font-mono text-xs">{nft.tokenId}</span>
-          </div>
-          {nft.contract?.tokenType && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Token Standard:</span>
-              <span>{nft.contract.tokenType}</span>
-            </div>
-          )}
-        </div>
+     <div className="mb-4">
+  <h3 className="text-sm font-semibold text-gray-400 mb-2">Details</h3>
+  <div className="space-y-2 text-sm">
+    {nft.chain && (
+      <div className="flex justify-between">
+        <span className="text-gray-400">Blockchain:</span>
+        <span className="font-semibold capitalize">{nft.chain}</span>
       </div>
+    )}
+    <div className="flex justify-between items-start">
+      <span className="text-gray-400 flex-shrink-0">Contract Address:</span>
+      <span className="font-mono text-xs text-right break-all ml-2">
+        {nft.contract?.address?.slice(0, 6)}...{nft.contract?.address?.slice(-4)}
+      </span>
+    </div>
+    <div className="flex justify-between items-start">
+      <span className="text-gray-400 flex-shrink-0">Token ID:</span>
+      <span className="font-mono text-xs text-right break-all ml-2 max-w-[200px]">
+        {nft.tokenId?.length > 20 ? `${nft.tokenId.slice(0, 10)}...${nft.tokenId.slice(-10)}` : nft.tokenId}
+      </span>
+    </div>
+    {nft.contract?.tokenType && (
+      <div className="flex justify-between items-start">
+        <span className="text-gray-400 flex-shrink-0">Token Standard:</span>
+        <span className="text-xs text-right break-all ml-2">{nft.contract.tokenType}</span>
+      </div>
+    )}
+  </div>
+</div>
 
       <button onClick={onSend} className="btn-primary w-full">
         Send NFT
