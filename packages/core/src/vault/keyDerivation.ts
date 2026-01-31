@@ -83,17 +83,14 @@ export function deriveSolanaKey(mnemonic: string, index: number = 0): {
   // Use first 32 bytes as ed25519 seed
   const ed25519Seed = child.privateKey.slice(0, 32);
   
-  // Use first 32 bytes as ed25519 seed
-  const ed25519Seed = child.privateKey.slice(0, 32);
-
-  // Derive ed25519 public key - THIS IS THE KEY FIX
+  // Derive ed25519 public key
   const publicKeyBytes = ed25519.getPublicKey(ed25519Seed);
-
+  
   const privateKey = bytesToHex(ed25519Seed);
   const publicKey = bytesToHex(publicKeyBytes);
-
-  // CRITICAL: Base58 encode the public key for Solana address
-  const address = base58Encode(publicKeyBytes);  // NOT bytesToHex!
+  
+  // Base58 encode the public key for Solana address
+  const address = base58Encode(publicKeyBytes);
 
   return {
     privateKey,
