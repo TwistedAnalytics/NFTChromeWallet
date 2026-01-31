@@ -436,49 +436,40 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     console.log('Found', solNfts.length, 'Solana NFTs');
   }
     
-    // Fetch Ethereum NFTs
-    if (ethAccount?.address) {
-      try {
-        const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC'; // Replace with actual key
-        const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
-        
-        console.log('Fetching ETH NFTs for:', ethAccount.address);
-        
-        const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
-        const ethData = await ethResponse.json();
-        
-        console.log('Alchemy response:', ethData);
-        
-        if (ethData.ownedNfts) {
-          const ethNfts = ethData.ownedNfts.map((nft: any) => ({
-            ...nft,
-            chain: 'ethereum',
-            tokenId: nft.id?.tokenId,
-            metadata: {
-              name: nft.title || nft.metadata?.name || 'Unknown',
-              image: nft.media?.[0]?.gateway || nft.metadata?.image,
-              description: nft.description || nft.metadata?.description,
-            }
-          }));
-          allNfts.push(...ethNfts);
-          console.log('Found', ethNfts.length, 'Ethereum NFTs');
-        }
-      } catch (ethError) {
-        console.error('Ethereum NFT fetch error:', ethError);
-      }
-    }
+  if (ethData.ownedNfts) {
+  const ethNfts = ethData.ownedNfts.map((nft: any) => ({
+    // Core identifiers
+    id: `${nft.contract.address}-${nft.id.tokenId}`,
+    chain: 'ethereum',
+    tokenId: nft.id.tokenId,
     
-    console.log('Total NFTs found:', allNfts.length);
+    // Contract info
+    contract: {
+      address: nft.contract.address,
+      name: nft.contractMetadata?.name || nft.contract.name || 'Unknown',
+      tokenType: nft.id.tokenMetadata?.tokenType || nft.contract.tokenType || 'ERC721',
+      symbol: nft.contractMetadata?.symbol || '',
+    },
     
-    // Cache results
-    await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: allNfts });
+    // Metadata
+    metadata: {
+      name: nft.title || nft.metadata?.name || nft.name || `#${nft.id.tokenId}`,
+      description: nft.description || nft.metadata?.description || '',
+      image: nft.media?.[0]?.gateway || nft.media?.[0]?.raw || nft.metadata?.image || '',
+      attributes: nft.metadata?.attributes || nft.rawMetadata?.attributes || [],
+      external_url: nft.metadata?.external_url || '',
+      animation_url: nft.metadata?.animation_url || '',
+    },
     
-    return { success: true, data: { nfts: allNfts } };
-  } catch (error) {
-    console.error('NFT fetch error:', error);
-    const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
-    return { success: true, data: { nfts: result[STORAGE_KEYS.NFT_CACHE] || [] } };
-  }
+    // Additional info
+    timeLastUpdated: nft.timeLastUpdated,
+    balance: nft.balance || '1',
+    
+    // Raw data
+    raw: nft,
+  }));
+  allNfts.push(...ethNfts);
+  console.log('Found', ethNfts.length, 'Ethereum NFTs');
 }
 
       case 'ACCOUNT_GET_CURRENT': {
