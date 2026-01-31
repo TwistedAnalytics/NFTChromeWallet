@@ -355,50 +355,90 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     return { success: true, data: { nfts: [] } };
   }
 
+  console.log('Fetching NFTs for SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+
   try {
     const allNfts: any[] = [];
     
-    // Fetch Solana NFTs via Helius
-    if (solAccount) {
-      const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
-      const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
-      
-      const solResponse = await fetch(heliusUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 'sol-nft',
-          method: 'getAssetsByOwner',
-          params: {
-            ownerAddress: solAccount.address,
-            page: 1,
-            limit: 1000
-          }
-        })
-      });
-      
-      const solData = await solResponse.json();
-      const solNfts = (solData.result?.items || []).map((nft: any) => ({
-        ...nft,
-        chain: 'solana'
-      }));
-      allNfts.push(...solNfts);
+    // Fetch Solana NFTs
+    if (solAccount?.address) {
+      try {
+        const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c'; // Replace with actual key
+        const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+        
+        console.log('Fetching SOL NFTs for:', solAccount.address);
+        
+        const solResponse = await fetch(heliusUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'sol-nft',
+            method: 'getAssetsByOwner',
+            params: {
+              ownerAddress: solAccount.address,
+              page: 1,
+              limit: 1000
+            }
+          })
+        });
+        
+        const solData = await solResponse.json();
+        console.log('Helius response:', solData);
+        
+        if (solData.result?.items) {
+          const solNfts = solData.result.items.map((nft: any) => ({
+            ...nft,
+            chain: 'solana',
+            contract: { address: nft.id },
+            tokenId: nft.id,
+            metadata: {
+              name: nft.content?.metadata?.name || 'Unknown',
+              image: nft.content?.links?.image || nft.content?.files?.[0]?.uri,
+              description: nft.content?.metadata?.description,
+            }
+          }));
+          allNfts.push(...solNfts);
+          console.log('Found', solNfts.length, 'Solana NFTs');
+        }
+      } catch (solError) {
+        console.error('Solana NFT fetch error:', solError);
+      }
     }
     
-    // Fetch Ethereum NFTs via Alchemy
-    if (ethAccount) {
-      const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
-      const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
-      
-      const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
-      const ethData = await ethResponse.json();
-      const ethNfts = (ethData.ownedNfts || []).map((nft: any) => ({
-        ...nft,
-        chain: 'ethereum'
-      }));
-      allNfts.push(...ethNfts);
+    // Fetch Ethereum NFTs
+    if (ethAccount?.address) {
+      try {
+        const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC'; // Replace with actual key
+        const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+        
+        console.log('Fetching ETH NFTs for:', ethAccount.address);
+        
+        const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
+        const ethData = await ethResponse.json();
+        
+        console.log('Alchemy response:', ethData);
+        
+        if (ethData.ownedNfts) {
+          const ethNfts = ethData.ownedNfts.map((nft: any) => ({
+            ...nft,
+            chain: 'ethereum',
+            tokenId: nft.id?.tokenId,
+            metadata: {
+              name: nft.title || nft.metadata?.name || 'Unknown',
+              image: nft.media?.[0]?.gateway || nft.metadata?.image,
+              description: nft.description || nft.metadata?.description,
+            }
+          }));
+          allNfts.push(...ethNfts);
+          console.log('Found', ethNfts.length, 'Ethereum NFTs');
+        }
+      } catch (ethError) {
+        console.error('Ethereum NFT fetch error:', ethError);
+      }
     }
+    
+    console.log('Total NFTs found:', allNfts.length);
     
     // Cache results
     await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: allNfts });
@@ -406,7 +446,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     return { success: true, data: { nfts: allNfts } };
   } catch (error) {
     console.error('NFT fetch error:', error);
-    // Return cached on error
     const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
     return { success: true, data: { nfts: result[STORAGE_KEYS.NFT_CACHE] || [] } };
   }
