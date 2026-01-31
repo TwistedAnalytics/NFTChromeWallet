@@ -162,9 +162,8 @@ async importWallet(password: string, mnemonic: string): Promise<{ vaultData: Vau
   getVault(): Vault {
     return this.vault;
   }
-}
 
-/**
+  /**
  * Get mnemonic (only when unlocked)
  */
 getMnemonic(): string {
@@ -174,12 +173,13 @@ getMnemonic(): string {
   return this.vault.getMnemonic();
 }
 
-/**
- * Set auto-lock time
- */
-setAutoLockTime(minutes: number): void {
-  if (!this.vault) {
-    throw new Error('Vault not initialized');
+  /**
+   * Set auto-lock time
+   */
+  setAutoLockTime(minutes: number): void {
+    if (!this.vault) {
+      throw new Error('Vault not initialized');
+    }
+    this.vault.setAutoLockTime(minutes);
   }
-  this.vault.setAutoLockTime(minutes);
 }
