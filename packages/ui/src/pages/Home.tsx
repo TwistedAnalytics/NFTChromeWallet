@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useMessaging } from '../hooks/useMessaging';
 
 export const Home: React.FC = () => {
   const { address, ethAddress, balance, ethBalance } = useWallet();
   const { navigate } = useNavigation();
+  const { send } = useMessaging();
+
+  const refreshBalances = useCallback(async () => {
+    console.log('Refreshing balances...');
+    const balanceResponse = await send({ type: 'GET_BALANCE' });
+    console.log('Fresh balance:', balanceResponse);
+    if (balanceResponse.success && balanceResponse.data) {
+      // Force re-render by reloading the popup
+      window.location.reload();
+    }
+  }, [send]);
 
   return (
     <div>
@@ -12,8 +24,8 @@ export const Home: React.FC = () => {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Balances</h2>
           <button
-            onClick={() => window.location.reload()}
-            className="text-xs text-gray-400 hover:text-white transition-colors"
+            onClick={refreshBalances}
+            className="text-xs text-gray-400 hover:text-white transition-colors px-2 py-1 bg-gray-700 rounded"
           >
             🔄 Refresh
           </button>
@@ -28,30 +40,42 @@ export const Home: React.FC = () => {
             <span className="text-xl font-bold text-purple-400">{ethBalance} ETH</span>
           </div>
         </div>
+        
+        {(parseFloat(balance) < 0.01 || parseFloat(ethBalance) < 0.001) && (
+          <div className="mt-3 p-3 bg-yellow-900/30 border border-yellow-600 rounded-lg">
+            <p className="text-xs text-yellow-200">
+              ⚠️ <strong>Need Gas Fees:</strong> To transfer NFTs, you need:
+            </p>
+            <ul className="text-xs text-yellow-200 mt-1 ml-4 list-disc">
+              {parseFloat(balance) < 0.01 && <li>~0.01 SOL for Solana NFTs</li>}
+              {parseFloat(ethBalance) < 0.001 && <li>~0.001 ETH for Ethereum NFTs</li>}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
-      <button
-        onClick={() => navigate('gallery')}
-        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+        <button
+          onClick={() => navigate('gallery')}
+          className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
         >
-        <div className="text-3xl mb-2">🖼️</div>
-        <div className="font-semibold text-xs">NFTs</div>
-      </button>
-      <button
-        onClick={() => navigate('send')}
-        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
-      >
-        <div className="text-3xl mb-2">📤</div>
-        <div className="font-semibold text-xs">Send</div>
-      </button>
-      <button
-        onClick={() => navigate('settings')}
-        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
-      >
-      <div className="text-3xl mb-2">⚙️</div>
-      <div className="font-semibold text-xs">Settings</div>
-      </button>
+          <div className="text-3xl mb-2">🖼️</div>
+          <div className="font-semibold text-xs">NFTs</div>
+        </button>
+        <button
+          onClick={() => navigate('send')}
+          className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+        >
+          <div className="text-3xl mb-2">📤</div>
+          <div className="font-semibold text-xs">Send</div>
+        </button>
+        <button
+          onClick={() => navigate('settings')}
+          className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+        >
+          <div className="text-3xl mb-2">⚙️</div>
+          <div className="font-semibold text-xs">Settings</div>
+        </button>
       </div>
 
       <div className="space-y-3">
