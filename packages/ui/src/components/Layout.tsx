@@ -23,10 +23,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               {/* Logo */}
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">V</span>
-                </div>
+              <img src="/icons/wallet.png" alt="NFT Vault" className="w-8 h-8" />
                 <span className="font-bold text-white text-lg">NFT Vault 1.X</span>
               </div>
 
