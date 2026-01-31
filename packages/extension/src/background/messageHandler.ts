@@ -149,30 +149,63 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             })
           });
           const data = await response.json();
-          console.log('SOL balance response:', data);
-          if (data.result?.value !== undefined) {
-            solBalance = (data.result.value / 1_000_000_000).toFixed(6);
-            console.log('SOL balance calculated:', solBalance);
-          }
-        } catch (error) {
-          console.error('Failed to fetch SOL balance:', error);
-        }
+          console.log('SOL balance calculated:', solBalance);
       }
+      } catch (error) {
+      console.error('Failed to fetch SOL balance:', error);
+      }
+    }
+  
+    // Fetch ETH balance from Ethereum
+    if (ethAccount && state.isUnlocked) {
+      try {
+        const ethRpc = 'https://eth.llamarpc.com';
+        console.log('Fetching ETH balance for:', ethAccount.address);
+        const response = await fetch(ethRpc, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_getBalance',
+            params: [ethAccount.address, 'latest']
+          })
+        });
+        const data = await response.json();
+        console.log('ETH balance response:', data);
+        if (data.result) {
+          const weiBalance = BigInt(data.result);
+          ethBalance = (Number(weiBalance) / 1e18).toFixed(6);
+          console.log('ETH balance calculated:', ethBalance);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ETH balance:', error);
+      }
+    }
+  
+  return { 
+    success: true, 
+    data: { 
+      balance: solBalance,
+      ethBalance: ethBalance
+    } 
+  };
+}
 
-  case 'GET_MNEMONIC': {
+case 'GET_MNEMONIC': {
   const state = engine.getState();
   if (!state.isUnlocked) {
     throw new Error('Wallet is locked');
   }
   const mnemonic = engine.getMnemonic();
   return { success: true, data: { mnemonic } };
-  }
+}
 
-  case 'SET_AUTO_LOCK_TIME': {
-    const { minutes } = validatedMessage.data;
-    engine.setAutoLockTime(minutes);
-    return { success: true };
-  }
+case 'SET_AUTO_LOCK_TIME': {
+  const { minutes } = validatedMessage.data;
+  engine.setAutoLockTime(minutes);
+  return { success: true };
+}
   
   // Fetch ETH balance from Ethereum
   if (ethAccount && state.isUnlocked) {
