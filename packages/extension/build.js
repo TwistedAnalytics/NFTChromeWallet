@@ -26,13 +26,7 @@ if (fs.existsSync(uiDistPath)) {
   fs.copyFileSync(uiDistPath, path.join(distDir, 'popup.html'));
 }
 
-// Create icons directory and placeholder icons
-const iconsDir = path.join(distDir, 'icons');
-if (!fs.existsSync(iconsDir)) {
-  fs.mkdirSync(iconsDir, { recursive: true });
-}
-
-// Create icons directory and placeholder icons
+// Create icons directory and copy custom icons if available
 const iconsDir = path.join(distDir, 'icons');
 if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
@@ -51,7 +45,7 @@ if (fs.existsSync(publicIconsDir)) {
   console.log('✅ Copied custom icons from public/icons');
 }
 
-// Create simple SVG placeholder icons
+// Create simple SVG placeholder icons (fallback)
 const createIcon = (size) => {
   const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
   <rect width="${size}" height="${size}" fill="#6366f1"/>
