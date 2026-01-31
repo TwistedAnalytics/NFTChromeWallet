@@ -8,26 +8,35 @@ export const useWallet = () => {
   const { send } = useMessaging();
 
   const initialize = useCallback(async () => {
-    console.log('Initializing wallet...');
-    try {
-      // Fetch balances
-      const balanceResponse = await send({ type: 'GET_BALANCE' });
-      console.log('Balance response:', balanceResponse);
-      
-      if (balanceResponse.success && balanceResponse.data) {
-        store.setBalance(balanceResponse.data.balance);
-        store.setEthBalance(balanceResponse.data.ethBalance);
-      }
-
-      // Fetch connected sites
-      const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
-      if (sitesResponse.success && sitesResponse.data) {
-        store.setConnectedSites(sitesResponse.data.sites);
-      }
-    } catch (error) {
-      console.error('Initialize error:', error);
+  console.log('Initializing wallet...');
+  try {
+    // Fetch balances with timeout handling
+    console.log('Fetching balance...');
+    const balanceResponse = await send({ type: 'GET_BALANCE' });
+    console.log('Balance response:', balanceResponse);
+    
+    if (balanceResponse.success && balanceResponse.data) {
+      store.setBalance(balanceResponse.data.balance || '0.000000000');
+      store.setEthBalance(balanceResponse.data.ethBalance || '0.000000000');
+    } else {
+      // Set to 0 if fetch failed
+      console.warn('Balance fetch failed, setting to 0');
+      store.setBalance('0.000000000');
+      store.setEthBalance('0.000000000');
     }
-  }, [send]);
+
+    // Fetch connected sites
+    const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
+    if (sitesResponse.success && sitesResponse.data) {
+      store.setConnectedSites(sitesResponse.data.sites);
+    }
+  } catch (error) {
+    console.error('Initialize error:', error);
+    // Set balances to 0 on error
+    store.setBalance('0.000000000');
+    store.setEthBalance('0.000000000');
+  }
+}, [send]);
   
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
     store.setLoading(true);
