@@ -30,21 +30,28 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <button
-          onClick={() => navigate('gallery')}
-          className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+      <div className="grid grid-cols-3 gap-3 mb-6">
+      <button
+        onClick={() => navigate('gallery')}
+        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
         >
-          <div className="text-3xl mb-2">🖼️</div>
-          <div className="font-semibold">NFTs</div>
-        </button>
-        <button
-          onClick={() => navigate('settings')}
-          className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
-        >
-          <div className="text-3xl mb-2">⚙️</div>
-          <div className="font-semibold">Settings</div>
-        </button>
+        <div className="text-3xl mb-2">🖼️</div>
+        <div className="font-semibold text-xs">NFTs</div>
+      </button>
+      <button
+        onClick={() => navigate('send')}
+        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+      >
+        <div className="text-3xl mb-2">📤</div>
+        <div className="font-semibold text-xs">Send</div>
+      </button>
+      <button
+        onClick={() => navigate('settings')}
+        className="card text-center hover:border-indigo-500 transition-colors cursor-pointer"
+      >
+      <div className="text-3xl mb-2">⚙️</div>
+      <div className="font-semibold text-xs">Settings</div>
+      </button>
       </div>
 
       <div className="space-y-3">
