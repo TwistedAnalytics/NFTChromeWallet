@@ -141,6 +141,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       const rpcEndpoints = [
         'https://api.mainnet-beta.solana.com',
         'https://rpc.helius.xyz/?api-key=647bbd34-42b3-418b-bf6c-c3a40813b41c',
+        'https://rpc.ankr.com/sol',
         'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe'
       ];
       
