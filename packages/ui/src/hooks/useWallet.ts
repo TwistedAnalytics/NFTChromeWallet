@@ -27,7 +27,7 @@ export const useWallet = () => {
     } catch (error) {
       console.error('Initialize error:', error);
     }
-  }, [send, store.setBalance, store.setEthBalance, store.setConnectedSites]);
+  }, [send]);
   
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
     store.setLoading(true);
@@ -59,7 +59,7 @@ export const useWallet = () => {
     } finally {
       store.setLoading(false);
     }
-  }, [send, store.setLoading, store.setError, store.setUnlocked, store.setAddress, store.setEthAddress]);
+  }, [send]);
 
   const unlockWallet = useCallback(async (password: string) => {
     store.setLoading(true);
@@ -88,14 +88,14 @@ export const useWallet = () => {
     } finally {
       store.setLoading(false);
     }
-  }, [send, initialize, store.setLoading, store.setError, store.setUnlocked, store.setAddress, store.setEthAddress]);
+  }, [send, initialize]);
   
   const lockWallet = useCallback(async () => {
     const response = await send({ type: 'WALLET_LOCK' });
     if (response.success) {
       store.reset();
     }
-  }, [send, store.reset]);
+  }, [send]);
 
   const switchNetwork = useCallback(async (network: Network) => {
     const response = await send({
@@ -107,7 +107,7 @@ export const useWallet = () => {
       store.setCurrentNetwork(network);
       await initialize();
     }
-  }, [send, initialize, store.setCurrentNetwork]);
+  }, [send, initialize]);
 
   const disconnectSite = useCallback(async (origin: string) => {
     const response = await send({
@@ -118,7 +118,7 @@ export const useWallet = () => {
     if (response.success) {
       store.setConnectedSites(store.connectedSites.filter(site => site !== origin));
     }
-  }, [send, store.setConnectedSites]);
+  }, [send]);
 
   return {
     ...store,
