@@ -8,66 +8,58 @@ export const useWallet = () => {
   const { send } = useMessaging();
 
   const initialize = useCallback(async () => {
-  console.log('Initializing wallet...');
-  try {
-    // Fetch balances
-    const balanceResponse = await send({ type: 'GET_BALANCE' });
-    console.log('Balance response:', balanceResponse);
-    
-    if (balanceResponse.success && balanceResponse.data) {
-      const solBalance = balanceResponse.data.balance;
-      const ethBalance = balanceResponse.data.ethBalance;
+    console.log('Initializing wallet...');
+    try {
+      // Fetch balances
+      const balanceResponse = await send({ type: 'GET_BALANCE' });
+      console.log('Balance response:', balanceResponse);
       
-      console.log('Setting balances - SOL:', solBalance, 'ETH:', ethBalance);
-      
-      store.setBalance(solBalance);
-      store.setEthBalance(ethBalance);
-      
-      // Force a small delay to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (balanceResponse.success && balanceResponse.data) {
+        store.setBalance(balanceResponse.data.balance);
+        store.setEthBalance(balanceResponse.data.ethBalance);
       }
 
       // Fetch connected sites
       const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
       if (sitesResponse.success && sitesResponse.data) {
         store.setConnectedSites(sitesResponse.data.sites);
-        }
-      } catch (error) {
-      console.error('Initialize error:', error);
       }
-    }, [send]);
+    } catch (error) {
+      console.error('Initialize error:', error);
+    }
+  }, [send]);
   
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
-  store.setLoading(true);
-  store.setError(null);
-  try {
-    console.log('Creating wallet...');
-    const response = await send({
-      type: 'WALLET_CREATE',
-      data: { password, mnemonic },
-    });
-    
-    console.log('Create wallet response:', response);
-    
-    if (response.success && response.data) {
-      store.setUnlocked(true);
-      store.setAddress(response.data.address);
-      store.setEthAddress(response.data.ethAddress);  // Add this
-      console.log('Wallet created - SOL:', response.data.address, 'ETH:', response.data.ethAddress);
-      return { success: true, mnemonic: response.data.mnemonic };
-    } else {
-      store.setError(response.error || 'Failed to create wallet');
-      return { success: false, error: response.error };
+    store.setLoading(true);
+    store.setError(null);
+    try {
+      console.log('Creating wallet...');
+      const response = await send({
+        type: 'WALLET_CREATE',
+        data: { password, mnemonic },
+      });
+      
+      console.log('Create wallet response:', response);
+      
+      if (response.success && response.data) {
+        store.setUnlocked(true);
+        store.setAddress(response.data.address);
+        store.setEthAddress(response.data.ethAddress);
+        console.log('Wallet created - SOL:', response.data.address, 'ETH:', response.data.ethAddress);
+        return { success: true, mnemonic: response.data.mnemonic };
+      } else {
+        store.setError(response.error || 'Failed to create wallet');
+        return { success: false, error: response.error };
+      }
+    } catch (error) {
+      console.error('Create wallet error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to create wallet';
+      store.setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      store.setLoading(false);
     }
-  } catch (error) {
-    console.error('Create wallet error:', error);
-    const errorMsg = error instanceof Error ? error.message : 'Failed to create wallet';
-    store.setError(errorMsg);
-    return { success: false, error: errorMsg };
-  } finally {
-    store.setLoading(false);
-  }
-}, [send]);
+  }, [send]);
 
   const unlockWallet = useCallback(async (password: string) => {
     store.setLoading(true);
@@ -81,7 +73,7 @@ export const useWallet = () => {
       if (response.success && response.data) {
         store.setUnlocked(true);
         store.setAddress(response.data.address);
-        store.setEthAddress(response.data.ethAddress);  // Add this
+        store.setEthAddress(response.data.ethAddress);
         console.log('Wallet unlocked - SOL:', response.data.address, 'ETH:', response.data.ethAddress);
         initialize().catch(console.error);
         return { success: true };
@@ -99,10 +91,10 @@ export const useWallet = () => {
   }, [send, initialize]);
   
   const lockWallet = useCallback(async () => {
-  const response = await send({ type: 'WALLET_LOCK' });
-  if (response.success) {
-    store.reset();
-  }
+    const response = await send({ type: 'WALLET_LOCK' });
+    if (response.success) {
+      store.reset();
+    }
   }, [send]);
 
   const switchNetwork = useCallback(async (network: Network) => {
