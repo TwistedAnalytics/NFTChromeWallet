@@ -9,25 +9,25 @@ export const useNFTs = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
- const fetchNFTs = useCallback(async () => {
-  if (!isUnlocked || (!address && !ethAddress)) return;
+  const fetchNFTs = useCallback(async () => {
+    if (!isUnlocked) return;
 
-  setIsLoading(true);
-  setError(null);
-  try {
-    const response = await send({ type: 'GET_NFTS' });
-    if (response.success && response.data) {
-      setNFTs(response.data.nfts);
-    } else {
-      setError(response.error || 'Failed to fetch NFTs');
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await send({ type: 'GET_NFTS' });
+      if (response.success && response.data) {
+        setNFTs(response.data.nfts);
+      } else {
+        setError(response.error || 'Failed to fetch NFTs');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch NFTs');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to fetch NFTs');
-  } finally {
-    setIsLoading(false);
-  }
-}, [isUnlocked, address, send, setNFTs]);  // Remove fetchNFTs from useEffect deps
-  
+  }, [isUnlocked, send, setNFTs]);
+
   const sendNFT = useCallback(async (tokenAddress: string, tokenId: string, toAddress: string) => {
     setIsLoading(true);
     setError(null);
@@ -54,10 +54,10 @@ export const useNFTs = () => {
   }, [send, fetchNFTs]);
 
   useEffect(() => {
-  if (isUnlocked && (address || ethAddress)) {
-    fetchNFTs();
-  }
-}, [isUnlocked, address, ethAddress]);
+    if (isUnlocked) {
+      fetchNFTs();
+    }
+  }, [isUnlocked]);
 
   return {
     nfts,
