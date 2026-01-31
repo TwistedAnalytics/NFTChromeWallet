@@ -117,26 +117,6 @@ export class Vault {
   }
 
   /**
-   * Check if session is still valid
-   */
-  async isSessionValid(): Promise<boolean> {
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-      return this.isUnlocked();
-    }
-  
-    try {
-      const result = await chrome.storage.session.get(['unlockUntil']);
-      if (result.unlockUntil && Date.now() < result.unlockUntil) {
-        return true;
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    }
-  
-    return false;
-  }
-
-  /**
    * Get mnemonic (only when unlocked)
    */
   getMnemonic(): string {
@@ -201,25 +181,26 @@ export class Vault {
     }
   }
 
-  
+  /**
+   * Set auto-lock timeout
+   */
+  setAutoLockTime(minutes: number): void {
+    this.autoLockMinutes = minutes;
+    if (this.isUnlocked()) {
+      this.startAutoLockTimer();
+    }
+  }
+
   /**
    * Start auto-lock timer
    */
-    private startAutoLockTimer(): void {
-      this.clearAutoLockTimer();
-  
-    // Save the unlock time for persistence across popup opens/closes
-    const unlockUntil = Date.now() + (this.autoLockMinutes * 60 * 1000);
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.session.set({ unlockUntil }).catch(() => {});
-      }
-  
-      this.autoLockTimer = setTimeout(() => {
-        this.lock();
-      }, this.autoLockMinutes * 60 * 1000);
-    }
-  
-  
+  private startAutoLockTimer(): void {
+    this.clearAutoLockTimer();
+    this.autoLockTimer = setTimeout(() => {
+      this.lock();
+    }, this.autoLockMinutes * 60 * 1000);
+  }
+
   /**
    * Reset auto-lock timer
    */
@@ -238,15 +219,4 @@ export class Vault {
       this.autoLockTimer = undefined;
     }
   }
-
-/**
- * Set auto-lock timeout
- */
-setAutoLockTime(minutes: number): void {
-  this.autoLockMinutes = minutes;
-  if (this.isUnlocked()) {
-    this.startAutoLockTimer();
-  }
-}
-  
 }
