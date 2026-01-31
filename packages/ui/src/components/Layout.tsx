@@ -27,7 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                   <span className="text-white font-bold text-sm">V</span>
                 </div>
-                <span className="font-bold text-white text-lg">Vault</span>
+                <span className="font-bold text-white text-lg">NFT Vault Wallet 1.0</span>
               </div>
 
               {/* Settings & Lock */}
