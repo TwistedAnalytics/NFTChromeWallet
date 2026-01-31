@@ -348,13 +348,47 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'GET_NFTS': {
-        const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
-        const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
+  const state = engine.getState();
+  const solAccount = engine.getCurrentAccount('solana');
   
-        await checkNFTChanges(nfts.length);
-  
-        return { success: true, data: { nfts } };
-      }
+  if (!solAccount || !state.isUnlocked) {
+    return { success: true, data: { nfts: [] } };
+  }
+
+  try {
+    // Fetch from Helius
+    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+    const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'nft-fetch',
+        method: 'getAssetsByOwner',
+        params: {
+          ownerAddress: solAccount.address,
+          page: 1,
+          limit: 1000
+        }
+      })
+    });
+
+    const data = await response.json();
+    const nfts = data.result?.items || [];
+    
+    // Cache the results
+    await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: nfts });
+    
+    return { success: true, data: { nfts } };
+  } catch (error) {
+    console.error('NFT fetch error:', error);
+    // Return cached on error
+    const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
+    return { success: true, data: { nfts: result[STORAGE_KEYS.NFT_CACHE] || [] } };
+  }
+}
 
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
