@@ -210,3 +210,13 @@ export class Vault {
     }
   }
 }
+
+/**
+ * Set auto-lock timeout
+ */
+setAutoLockTime(minutes: number): void {
+  this.autoLockMinutes = minutes;
+  if (this.isUnlocked()) {
+    this.startAutoLockTimer();
+  }
+}
