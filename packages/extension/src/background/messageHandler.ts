@@ -135,38 +135,44 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   let solBalance = '0.000000000';
   let ethBalance = '0.000000000';
   
-  // Fetch SOL balance from Solana
+  // Fetch SOL balance from Solana with timeout
   if (solAccount && state.isUnlocked) {
     try {
-      // Use YOUR custom RPC endpoint FIRST
       const rpcEndpoints = [
-        'https://rpc.helius.xyz/?api-key=647bbd34-42b3-418b-bf6c-c3a40813b41c',
-        'https://solana-rpc.publicnode.com',
-        'https://public.rpc.solanavibestation.com/',
-        'https://go.getblock.us/86aac42ad4484f3c813079afc201451c',
-        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe'
+        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe',
+        'https://api.mainnet-beta.solana.com',
+        'https://rpc.ankr.com/solana'
       ];
       
       let fetchSuccess = false;
       for (const solanaRpc of rpcEndpoints) {
+        if (fetchSuccess) break;
+        
         try {
           console.log(`Trying Solana RPC: ${solanaRpc}`);
+          
+          // Add 5 second timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
           const response = await fetch(solanaRpc, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
             },
             body: JSON.stringify({
               jsonrpc: '2.0',
               id: 1,
               method: 'getBalance',
               params: [solAccount.address]
-            })
+            }),
+            signal: controller.signal
           });
           
+          clearTimeout(timeoutId);
+          
           if (!response.ok) {
-            console.error(`HTTP ${response.status}: ${response.statusText}`);
+            console.error(`HTTP ${response.status}`);
             continue;
           }
           
@@ -176,92 +182,96 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           if (data.result?.value !== undefined) {
             const lamports = data.result.value;
             solBalance = (lamports / 1_000_000_000).toFixed(9);
-            console.log(`SOL balance: ${lamports} lamports = ${solBalance} SOL`);
+            console.log(`✅ SOL balance: ${solBalance} SOL`);
             fetchSuccess = true;
             break;
-          } else if (data.error) {
-            console.error('RPC error:', data.error);
-            continue;
           }
-        } catch (rpcError) {
-          console.error(`Failed with ${solanaRpc}:`, rpcError);
+        } catch (rpcError: any) {
+          if (rpcError.name === 'AbortError') {
+            console.error(`⏱️ Timeout for ${solanaRpc}`);
+          } else {
+            console.error(`❌ Failed with ${solanaRpc}:`, rpcError.message);
+          }
           continue;
         }
       }
       
       if (!fetchSuccess) {
-        console.error('All Solana RPC endpoints failed');
+        console.warn('⚠️ Could not fetch SOL balance from any RPC');
       }
     } catch (error) {
       console.error('Failed to fetch SOL balance:', error);
     }
-  } else {
-    console.log('Skipping SOL balance fetch:', { 
-      hasAccount: !!solAccount, 
-      isUnlocked: state.isUnlocked 
-    });
   }
   
-  // Fetch ETH balance from Ethereum
-if (ethAccount && state.isUnlocked) {
-  try {
-    // Try multiple reliable ETH RPC endpoints
-    const ethRpcEndpoints = [
-      'https://eth.llamarpc.com',
-      'https://rpc.ankr.com/eth',
-      'https://ethereum.publicnode.com',
-      'https://cloudflare-eth.com'
-    ];
-    
-    let ethFetchSuccess = false;
-    for (const ethRpc of ethRpcEndpoints) {
-      try {
-        console.log('Fetching ETH balance from:', ethRpc, 'for address:', ethAccount.address);
-        const response = await fetch(ethRpc, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'eth_getBalance',
-            params: [ethAccount.address, 'latest']
-          })
-        });
+  // Fetch ETH balance from Ethereum with timeout
+  if (ethAccount && state.isUnlocked) {
+    try {
+      const ethRpcEndpoints = [
+        'https://rpc.ankr.com/eth',
+        'https://ethereum.publicnode.com',
+        'https://eth.llamarpc.com'
+      ];
+      
+      let ethFetchSuccess = false;
+      for (const ethRpc of ethRpcEndpoints) {
+        if (ethFetchSuccess) break;
         
-        if (!response.ok) {
-          console.error(`ETH RPC HTTP ${response.status}: ${response.statusText}`);
+        try {
+          console.log('Fetching ETH balance from:', ethRpc);
+          
+          // Add 5 second timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(ethRpc, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_getBalance',
+              params: [ethAccount.address, 'latest']
+            }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            console.error(`ETH RPC HTTP ${response.status}`);
+            continue;
+          }
+          
+          const data = await response.json();
+          console.log('ETH balance response:', data);
+          
+          if (data.result) {
+            const weiBalance = BigInt(data.result);
+            ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
+            console.log('✅ ETH balance:', ethBalance);
+            ethFetchSuccess = true;
+            break;
+          }
+        } catch (ethRpcError: any) {
+          if (ethRpcError.name === 'AbortError') {
+            console.error(`⏱️ Timeout for ${ethRpc}`);
+          } else {
+            console.error(`❌ Failed with ${ethRpc}:`, ethRpcError.message);
+          }
           continue;
         }
-        
-        const data = await response.json();
-        console.log('ETH balance response:', data);
-        
-        if (data.result) {
-          const weiBalance = BigInt(data.result);
-          ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
-          console.log('ETH balance calculated:', ethBalance);
-          ethFetchSuccess = true;
-          break;
-        } else if (data.error) {
-          console.error('ETH RPC error:', data.error);
-          continue;
-        }
-      } catch (ethRpcError) {
-        console.error(`Failed with ${ethRpc}:`, ethRpcError);
-        continue;
       }
+      
+      if (!ethFetchSuccess) {
+        console.warn('⚠️ Could not fetch ETH balance from any RPC');
+      }
+    } catch (error) {
+      console.error('Failed to fetch ETH balance:', error);
     }
-    
-    if (!ethFetchSuccess) {
-      console.error('All Ethereum RPC endpoints failed');
-    }
-  } catch (error) {
-    console.error('Failed to fetch ETH balance:', error);
   }
-}
   
   // Check for balance changes and notify
   if (solAccount && ethAccount) {
