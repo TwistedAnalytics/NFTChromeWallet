@@ -7,6 +7,8 @@ import type { WalletState, Account, Settings, VaultData, DEFAULT_WALLET_STATE } 
 export class WalletEngine {
   private vault: Vault;
   private state: WalletState;
+  private autoLockTimer: any = null;
+  private autoLockMinutes: number = 5;
 
   constructor(initialState?: WalletState) {
     this.vault = new Vault();
@@ -29,37 +31,48 @@ export class WalletEngine {
     };
   }
 
+  private resetAutoLockTimer(): void {
+    if (this.autoLockTimer) {
+      clearTimeout(this.autoLockTimer);
+    }
+    
+    if (this.state.isUnlocked) {
+      this.autoLockTimer = setTimeout(() => {
+        this.lockWallet();
+      }, this.autoLockMinutes * 60 * 1000);
+    }
+  }
+
   /**
    * Create new wallet
    */
+  async createWallet(password: string, mnemonic?: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
+    const vaultData = await this.vault.create(password, mnemonic);
+    const content = await this.vault.unlock(vaultData, password);
+
+    this.state = {
+      isInitialized: true,
+      isUnlocked: true,
+      accounts: content.accounts,
+      settings: this.state.settings,
+      vaultData,
+    };
+
+    this.resetAutoLockTimer();
+
+    // Return both vaultData and the mnemonic
+    return { 
+      vaultData, 
+      mnemonic: this.vault.getMnemonic() 
+    };
+  }
+
   /**
- * Create new wallet
- */
-async createWallet(password: string, mnemonic?: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
-  const vaultData = await this.vault.create(password, mnemonic);
-  const content = await this.vault.unlock(vaultData, password);
-
-  this.state = {
-    isInitialized: true,
-    isUnlocked: true,
-    accounts: content.accounts,
-    settings: this.state.settings,
-    vaultData,
-  };
-
-  // Return both vaultData and the mnemonic
-  return { 
-    vaultData, 
-    mnemonic: this.vault.getMnemonic() 
-  };
-}
-
-/**
- * Import wallet from mnemonic
- */
-async importWallet(password: string, mnemonic: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
-  return this.createWallet(password, mnemonic);
-}
+   * Import wallet from mnemonic
+   */
+  async importWallet(password: string, mnemonic: string): Promise<{ vaultData: VaultData; mnemonic: string }> {
+    return this.createWallet(password, mnemonic);
+  }
 
   /**
    * Unlock wallet
@@ -76,12 +89,18 @@ async importWallet(password: string, mnemonic: string): Promise<{ vaultData: Vau
     };
 
     this.vault.setAutoLockMinutes(this.state.settings.autoLockMinutes);
+    this.resetAutoLockTimer();
   }
 
-   /**
+  /**
    * Lock wallet
    */
   lockWallet(): void {
+    if (this.autoLockTimer) {
+      clearTimeout(this.autoLockTimer);
+      this.autoLockTimer = null;
+    }
+    
     this.vault.lock();
     this.state = {
       ...this.state,
@@ -114,6 +133,8 @@ async importWallet(password: string, mnemonic: string): Promise<{ vaultData: Vau
 
     if (settings.autoLockMinutes !== undefined) {
       this.vault.setAutoLockMinutes(settings.autoLockMinutes);
+      this.autoLockMinutes = settings.autoLockMinutes;
+      this.resetAutoLockTimer();
     }
   }
 
@@ -164,32 +185,34 @@ async importWallet(password: string, mnemonic: string): Promise<{ vaultData: Vau
   }
 
   /**
- * Get mnemonic (only when unlocked)
- */
-getMnemonic(): string {
-  if (!this.vault) {
-    throw new Error('Vault not initialized');
+   * Get mnemonic (only when unlocked)
+   */
+  getMnemonic(): string {
+    if (!this.vault) {
+      throw new Error('Vault not initialized');
+    }
+    return this.vault.getMnemonic();
   }
-  return this.vault.getMnemonic();
-}
 
   /**
- * Get private key (only when unlocked)
- */
-getPrivateKey(chain: 'ethereum' | 'solana', accountIndex: number = 0): string {
-  if (!this.vault) {
-    throw new Error('Vault not initialized');
+   * Get private key (only when unlocked)
+   */
+  getPrivateKey(chain: 'ethereum' | 'solana', accountIndex: number = 0): string {
+    if (!this.vault) {
+      throw new Error('Vault not initialized');
+    }
+    return this.vault.getPrivateKey(chain, accountIndex);
   }
-  return this.vault.getPrivateKey(chain, accountIndex);
-}
 
   /**
    * Set auto-lock time
    */
   setAutoLockTime(minutes: number): void {
-    if (!this.vault) {
-      throw new Error('Vault not initialized');
+    this.autoLockMinutes = minutes;
+    this.state.settings.autoLockMinutes = minutes;
+    if (this.vault) {
+      this.vault.setAutoLockMinutes(minutes);
     }
-    this.vault.setAutoLockMinutes(minutes);
+    this.resetAutoLockTimer();
   }
 }

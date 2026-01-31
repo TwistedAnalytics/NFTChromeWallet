@@ -32,6 +32,25 @@ if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
 }
 
+// Create icons directory and placeholder icons
+const iconsDir = path.join(distDir, 'icons');
+if (!fs.existsSync(iconsDir)) {
+  fs.mkdirSync(iconsDir, { recursive: true });
+}
+
+// Copy custom icons from public if they exist
+const publicIconsDir = path.join(__dirname, 'public/icons');
+if (fs.existsSync(publicIconsDir)) {
+  const iconFiles = fs.readdirSync(publicIconsDir);
+  iconFiles.forEach(file => {
+    fs.copyFileSync(
+      path.join(publicIconsDir, file),
+      path.join(iconsDir, file)
+    );
+  });
+  console.log('✅ Copied custom icons from public/icons');
+}
+
 // Create simple SVG placeholder icons
 const createIcon = (size) => {
   const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
