@@ -8,38 +8,27 @@ export const useWallet = () => {
   const { send } = useMessaging();
 
   const initialize = useCallback(async () => {
-  store.setLoading(true);
+  console.log('Initializing wallet...');
   try {
-    const statusResponse = await send({ type: 'GET_STATUS' });
-    if (statusResponse.success && statusResponse.data) {
-      store.setUnlocked(statusResponse.data.isUnlocked);
-      if (statusResponse.data.isUnlocked) {
-        store.setAddress(statusResponse.data.address || null);
-        store.setCurrentNetwork(statusResponse.data.network || 'mainnet');
-        
-        // Make these calls in parallel instead of sequential
-        const [balanceResponse, sitesResponse] = await Promise.all([
-          send({ type: 'GET_BALANCE' }),
-          send({ type: 'GET_CONNECTED_SITES' })
-        ]);
-
-        if (balanceResponse.success && balanceResponse.data) {
-          store.setBalance(balanceResponse.data.balance);
-          store.setEthBalance(balanceResponse.data.ethBalance);  // Add this line
-        }
-
-        if (sitesResponse.success && sitesResponse.data) {
-          store.setConnectedSites(sitesResponse.data.sites);
-        }
+    // Fetch balances
+    const balanceResponse = await send({ type: 'GET_BALANCE' });
+    console.log('Balance response:', balanceResponse);
+    
+    if (balanceResponse.success && balanceResponse.data) {
+      store.setBalance(balanceResponse.data.balance);
+      store.setEthBalance(balanceResponse.data.ethBalance);
       }
-    }
-  } catch (error) {
-    store.setError(error instanceof Error ? error.message : 'Failed to initialize wallet');
-  } finally {
-    store.setLoading(false);
-  }
-}, [send]);
 
+    // Fetch connected sites
+    const sitesResponse = await send({ type: 'GET_CONNECTED_SITES' });
+    if (sitesResponse.success && sitesResponse.data) {
+      store.setConnectedSites(sitesResponse.data.sites);
+      }
+    } catch (error) {
+    console.error('Initialize error:', error);
+    }
+  }, [send]);
+  
   const createWallet = useCallback(async (password: string, mnemonic?: string) => {
   store.setLoading(true);
   store.setError(null);
