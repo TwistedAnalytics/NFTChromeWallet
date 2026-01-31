@@ -20,17 +20,29 @@ export interface Network {
 export interface Account {
   address: string;
   publicKey: string;
+  privateKey: string;  // ADD THIS LINE
   derivationPath: string;
   index: number;
+}
+
+/**
+ * Vault content (decrypted)
+ */
+export interface VaultContent {
+  mnemonic: string;
+  accounts: {
+    ethereum: Account[];
+    solana: Account[];
+  };
 }
 
 /**
  * Encrypted vault data
  */
 export interface VaultData {
-  encrypted: string;
-  salt: string;
   version: number;
+  salt: number[];
+  encryptedContent: number[];
 }
 
 /**
@@ -99,6 +111,18 @@ export const NETWORKS = {
       explorerUrl: 'https://etherscan.io',
       nativeCurrency: {
         name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18,
+      },
+    },
+    {
+      id: 'ethereum-goerli',
+      name: 'Goerli Testnet',
+      chainId: 5,
+      rpcUrl: 'https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+      explorerUrl: 'https://goerli.etherscan.io',
+      nativeCurrency: {
+        name: 'Goerli Ether',
         symbol: 'ETH',
         decimals: 18,
       },
