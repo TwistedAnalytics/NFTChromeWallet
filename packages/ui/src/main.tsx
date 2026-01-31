@@ -29,6 +29,17 @@ const AppContent: React.FC = () => {
         setHasWallet(false);
       }
     };
+
+    // Auto-initialize balances when wallet is unlocked
+    useEffect(() => {
+      if (isUnlocked && address) {
+        console.log('Wallet is unlocked, fetching balances...');
+        // Fetch balance from background
+        chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
+          console.log('Auto-fetch balance response:', response);
+        });
+      }
+    }, [isUnlocked, address]);
     
     if (!isLoading) {
       checkWallet();
