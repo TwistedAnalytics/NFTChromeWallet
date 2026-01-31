@@ -51,18 +51,17 @@ export const Home: React.FC = () => {
               </button>
             </div>
             
-            {/* Quick Actions */}
+                        {/* Quick Actions */}
             <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => navigate('send')}
                 className="w-full max-w-[280px] btn-primary py-3 px-6 flex items-center justify-center gap-2"
               >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-            Send
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send
               </button>
-              </div>
             </div>
           </div>
         </div>
