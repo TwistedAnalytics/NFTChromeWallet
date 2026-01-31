@@ -2,6 +2,7 @@ import { WalletEngine } from '@nft-wallet/core';
 import { MessageSchema, WalletCreateSchema, WalletUnlockSchema } from '@nft-wallet/shared';
 import type { Message, MessageResponse, WalletState, VaultData } from '@nft-wallet/shared';
 import { checkPermission, requestPermission, revokePermission, listPermissions } from './permissionManager.js';
+import { checkBalanceChanges, checkNFTChanges } from './notificationHandler.js';
 
 // Global wallet engine instance
 let walletEngine: WalletEngine | null = null;
@@ -139,7 +140,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-     case 'GET_BALANCE': {
+      case 'GET_BALANCE': {
         const state = engine.getState();
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
@@ -235,6 +236,11 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           }
         }
         
+        // Check for balance changes and notify
+        if (solAccount && ethAccount) {
+          await checkBalanceChanges(solBalance, ethBalance, solAccount.address, ethAccount.address);
+        }
+        
         return { 
           success: true, 
           data: { 
@@ -295,6 +301,10 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       case 'GET_NFTS': {
         const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
         const nfts = result[STORAGE_KEYS.NFT_CACHE] || [];
+        
+        // Check for new NFTs and notify
+        await checkNFTChanges(nfts.length);
+        
         return { success: true, data: { nfts } };
       }
 
