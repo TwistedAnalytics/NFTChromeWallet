@@ -147,8 +147,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   console.log('GET_BALANCE - SOL account:', solAccount?.address);
   console.log('GET_BALANCE - ETH account:', ethAccount?.address);
   
-  let solBalance = '0.000000';
-  let ethBalance = '0.000000';
+  let solBalance = '0.000000000';
+  let ethBalance = '0.000000000';
   
   // Fetch SOL balance from Solana
   if (solAccount && state.isUnlocked) {
