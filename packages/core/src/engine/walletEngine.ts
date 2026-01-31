@@ -29,9 +29,40 @@ export class WalletEngine {
     };
   }
 
-  /**
-   * Create new wallet
-   */
+private autoLockTimer: NodeJS.Timeout | null = null;
+private autoLockMinutes: number = 5; // Default 5 minutes
+
+setAutoLockTime(minutes: number): void {
+  this.autoLockMinutes = minutes;
+  this.resetAutoLockTimer();
+}
+
+private resetAutoLockTimer(): void {
+  if (this.autoLockTimer) {
+    clearTimeout(this.autoLockTimer);
+  }
+  
+  if (this.state.isUnlocked) {
+    this.autoLockTimer = setTimeout(() => {
+      this.lockWallet();
+    }, this.autoLockMinutes * 60 * 1000);
+  }
+}
+
+unlockWallet(vaultData: VaultData, password: string): void {
+  // ... existing unlock code ...
+  this.state.isUnlocked = true;
+  this.resetAutoLockTimer(); // Add this line
+}
+
+lockWallet(): void {
+  // ... existing lock code ...
+  if (this.autoLockTimer) {
+    clearTimeout(this.autoLockTimer);
+    this.autoLockTimer = null;
+  }
+} 
+  
   /**
  * Create new wallet
  */
