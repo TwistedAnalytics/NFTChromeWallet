@@ -71,6 +71,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           } 
         };
       }
+
+      case 'SET_AUTO_LOCK_TIME': {
+        const { minutes } = validatedMessage.data;
+        engine.setAutoLockTime(minutes);
+        const state = engine.getState();
+        await saveWalletState(state);
+        return { success: true };
+      }
       
       case 'WALLET_IMPORT': {
         console.log('WALLET_IMPORT received');
