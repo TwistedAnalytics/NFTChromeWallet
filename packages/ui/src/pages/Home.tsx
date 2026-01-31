@@ -16,8 +16,8 @@ export const Home: React.FC = () => {
   };
 
   const copyAddress = (addr: string) => {
-    navigator.clipboard.writeText(addr);
-    // Could add a toast notification here
+  navigator.clipboard.writeText(addr);
+  alert('Copied!');
   };
 
   const formatAddress = (addr: string) => {
