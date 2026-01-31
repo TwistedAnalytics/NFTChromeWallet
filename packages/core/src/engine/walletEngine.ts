@@ -207,6 +207,6 @@ getPrivateKey(chain: 'ethereum' | 'solana', accountIndex: number = 0): string {
     if (!this.vault) {
       throw new Error('Vault not initialized');
     }
-    this.vault.setAutoLockTime(minutes);
+    this.vault.setAutoLockMinutes(minutes);
   }
 }
