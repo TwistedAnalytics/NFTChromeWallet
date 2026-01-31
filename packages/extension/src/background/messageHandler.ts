@@ -385,25 +385,56 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const solData = await solResponse.json();
         console.log('Helius response:', solData);
         
-        if (solData.result?.items) {
-          const solNfts = solData.result.items.map((nft: any) => ({
-            ...nft,
-            chain: 'solana',
-            contract: { address: nft.id },
-            tokenId: nft.id,
-            metadata: {
-              name: nft.content?.metadata?.name || 'Unknown',
-              image: nft.content?.links?.image || nft.content?.files?.[0]?.uri,
-              description: nft.content?.metadata?.description,
-            }
-          }));
-          allNfts.push(...solNfts);
-          console.log('Found', solNfts.length, 'Solana NFTs');
-        }
-      } catch (solError) {
-        console.error('Solana NFT fetch error:', solError);
-      }
-    }
+  if (solData.result?.items) {
+    const solNfts = solData.result.items.map((nft: any) => ({
+      // Core identifiers
+      id: nft.id,
+      chain: 'solana',
+      mint: nft.id,
+      tokenId: nft.id,
+    
+      // Contract/Collection info
+      contract: {
+        address: nft.id,
+        name: nft.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || 'Unknown Collection',
+        tokenType: nft.interface || 'Unknown',
+      },
+    
+      // Metadata
+      metadata: {
+        name: nft.content?.metadata?.name || `#${nft.id.slice(0, 8)}`,
+        description: nft.content?.metadata?.description || '',
+        image: nft.content?.links?.image || nft.content?.files?.[0]?.uri || '',
+        attributes: nft.content?.metadata?.attributes || [],
+      
+        // Additional metadata
+        symbol: nft.content?.metadata?.symbol || '',
+        external_url: nft.content?.links?.external_url || '',
+        animation_url: nft.content?.links?.animation_url || '',
+      },
+    
+      // Ownership info
+      ownership: {
+        owner: nft.ownership?.owner || solAccount.address,
+        frozen: nft.ownership?.frozen || false,
+        delegated: nft.ownership?.delegated || false,
+      },
+    
+      // Creators
+      creators: nft.creators || [],
+    
+      // Royalty
+      royalty: nft.royalty || {},
+    
+      // Compression (for cNFTs)
+      compression: nft.compression || {},
+    
+      // Raw data for advanced use
+      raw: nft,
+    }));
+    allNfts.push(...solNfts);
+    console.log('Found', solNfts.length, 'Solana NFTs');
+  }
     
     // Fetch Ethereum NFTs
     if (ethAccount?.address) {
