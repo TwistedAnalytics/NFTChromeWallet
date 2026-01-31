@@ -1,6 +1,6 @@
 import React from 'react';
 import { NFTDetail } from '../components/NFTDetail';
-import { useNavigate } from '../hooks/useNavigate';
+import { useNavigation } from '../contexts/NavigationContext';
 import type { NFT } from '@nft-wallet/shared';
 
 interface NFTViewProps {
@@ -8,13 +8,22 @@ interface NFTViewProps {
 }
 
 export const NFTView: React.FC<NFTViewProps> = ({ nft }) => {
-  const navigate = useNavigate();
+  const { navigate } = useNavigation();
+
+  const handleSend = () => {
+    navigate('send', { nft });
+  };
 
   return (
-    <NFTDetail
-      nft={nft}
-      onBack={() => navigate('gallery')}
-      onSend={() => navigate('send', { nft })}
-    />
+    <div>
+      <button
+        onClick={() => navigate('gallery')}
+        className="mb-4 text-indigo-400 hover:text-indigo-300 transition-colors"
+      >
+        ← Back to Gallery
+      </button>
+
+      <NFTDetail nft={nft} onSend={handleSend} />
+    </div>
   );
 };
