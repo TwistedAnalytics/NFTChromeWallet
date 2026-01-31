@@ -53,9 +53,9 @@ export const useNFTs = () => {
     }
   }, [send, fetchNFTs]);
 
-  //useEffect(() => {
-    //fetchNFTs();
-  //}, [fetchNFTs]);
+  useEffect(() => {
+    fetchNFTs();
+  }, [fetchNFTs]);
 
   return {
     nfts,
