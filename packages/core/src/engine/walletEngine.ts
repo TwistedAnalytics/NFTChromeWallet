@@ -78,24 +78,7 @@ async importWallet(password: string, mnemonic: string): Promise<{ vaultData: Vau
     this.vault.setAutoLockMinutes(this.state.settings.autoLockMinutes);
   }
 
- /**
- * Restore session from stored vault data (for service worker restarts)
- */
-async restoreSession(vaultData: VaultData): Promise<void> {
-  // We need to actually restore the vault, not just the state
-  // The vault needs to be in an unlocked state with the keys available
-  this.state = {
-    ...this.state,
-    isInitialized: true,
-    isUnlocked: true,
-    vaultData,
-  };
-  
-  // Mark vault as restored (the keys are already in memory from state.accounts)
-  console.log('Session restored with accounts:', this.state.accounts);
-}
-
-  /**
+   /**
    * Lock wallet
    */
   lockWallet(): void {
