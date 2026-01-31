@@ -54,8 +54,8 @@ export const useNFTs = () => {
   }, [send, fetchNFTs]);
 
   useEffect(() => {
-    fetchNFTs();
-  }, [fetchNFTs]);
+  fetchNFTs();
+  }, [isUnlocked, address]);  // Only re-fetch when wallet state changes
 
   return {
     nfts,
