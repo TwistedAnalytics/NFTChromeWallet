@@ -21,7 +21,7 @@ export class Vault {
   private mnemonic?: string;
   private password?: string;
   private autoLockTimer?: NodeJS.Timeout;
-  private autoLockMinutes: number = 5;
+  private autoLockMinutes: number = 15;
 
   /**
    * Create a new vault with a generated mnemonic
