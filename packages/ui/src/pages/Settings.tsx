@@ -12,6 +12,42 @@ export const Settings: React.FC = () => {
   const [showEthPrivateKey, setShowEthPrivateKey] = useState(false);
   const [ethPrivateKey, setEthPrivateKey] = useState('');
 
+  const [autoLockMinutes, setAutoLockMinutes] = useState(5);
+const [showChangePassword, setShowChangePassword] = useState(false);
+const [currentPassword, setCurrentPassword] = useState('');
+const [newPassword, setNewPassword] = useState('');
+const [confirmPassword, setConfirmPassword] = useState('');
+
+const handleAutoLockChange = async (minutes: number) => {
+  try {
+    await chrome.runtime.sendMessage({ 
+      type: 'SET_AUTO_LOCK_TIME',
+      data: { minutes }
+    });
+    setAutoLockMinutes(minutes);
+    alert(`Auto-lock set to ${minutes} minutes`);
+  } catch (error) {
+    console.error('Error setting auto-lock:', error);
+  }
+};
+
+const handleChangePassword = async () => {
+  if (newPassword !== confirmPassword) {
+    alert('Passwords do not match');
+    return;
+  }
+  if (newPassword.length < 8) {
+    alert('Password must be at least 8 characters');
+    return;
+  }
+  // TODO: Implement password change in background
+  alert('Password change not yet implemented');
+  setShowChangePassword(false);
+  setCurrentPassword('');
+  setNewPassword('');
+  setConfirmPassword('');
+};
+
   const handleShowSeed = async () => {
     if (!showSeed) {
       try {
@@ -160,6 +196,78 @@ export const Settings: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Auto-Lock Timer */}
+<div className="card mb-4">
+  <h3 className="text-lg font-semibold mb-3 text-purple-400">Auto-Lock Timer</h3>
+  <div className="space-y-2">
+    {[5, 10, 15].map((minutes) => (
+      <button
+        key={minutes}
+        onClick={() => handleAutoLockChange(minutes)}
+        className={`w-full px-4 py-3 rounded-lg transition-colors text-left flex items-center justify-between ${
+          autoLockMinutes === minutes
+            ? 'bg-purple-600 hover:bg-purple-700'
+            : 'bg-gray-700 hover:bg-gray-600'
+        }`}
+      >
+        <span className="font-medium">{minutes} Minutes</span>
+        {autoLockMinutes === minutes && <span>✓</span>}
+      </button>
+    ))}
+  </div>
+</div>
+
+{/* Change Password */}
+<div className="card mb-4">
+  <h3 className="text-lg font-semibold mb-3 text-purple-400">Change Password</h3>
+  {!showChangePassword ? (
+    <button
+      onClick={() => setShowChangePassword(true)}
+      className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors font-medium"
+    >
+      Change Password
+    </button>
+  ) : (
+    <div className="space-y-3">
+      <input
+        type="password"
+        placeholder="Current Password"
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        className="input w-full"
+      />
+      <input
+        type="password"
+        placeholder="New Password"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        className="input w-full"
+      />
+      <input
+        type="password"
+        placeholder="Confirm New Password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        className="input w-full"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={handleChangePassword}
+          className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors font-medium"
+        >
+          Update
+        </button>
+        <button
+          onClick={() => setShowChangePassword(false)}
+          className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors font-medium"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
+</div>
 
       {/* Actions */}
       <div className="card">
