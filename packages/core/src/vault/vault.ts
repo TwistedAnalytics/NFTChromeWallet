@@ -117,14 +117,30 @@ export class Vault {
   }
 
   /**
-   * Get mnemonic (only when unlocked)
-   */
-  getMnemonic(): string {
-    if (!this.mnemonic) {
-      throw new Error('Vault is locked');
-    }
-    return this.mnemonic;
+ * Get mnemonic (only when unlocked)
+ */
+getMnemonic(): string {
+  if (!this.unlocked || !this.content) {
+    throw new Error('Vault is locked');
   }
+  return this.content.mnemonic;
+}
+
+/**
+ * Get private key for a specific chain and account index
+ */
+getPrivateKey(chain: 'ethereum' | 'solana', accountIndex: number = 0): string {
+  if (!this.unlocked || !this.content) {
+    throw new Error('Vault is locked');
+  }
+  
+  const account = this.content.accounts[chain]?.[accountIndex];
+  if (!account) {
+    throw new Error(`Account not found for ${chain} at index ${accountIndex}`);
+  }
+  
+  return account.privateKey;
+}
 
   /**
    * Sign message with private key
