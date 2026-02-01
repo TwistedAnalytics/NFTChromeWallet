@@ -619,6 +619,66 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         }
       }
 
+            case 'SEND_NFT': {
+        const { tokenAddress, tokenId, toAddress, nft } = validatedMessage.data;
+        
+        console.log('🚀 SEND_NFT request:', { tokenAddress, tokenId, toAddress, nft });
+        
+        if (!engine.getState().isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+
+        // Determine chain from NFT data or token address format
+        const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
+        
+        try {
+          if (chain === 'solana') {
+            // Send Solana NFT
+            const solAccount = engine.getCurrentAccount('solana');
+            if (!solAccount) {
+              throw new Error('No Solana account found');
+            }
+
+            // Get private key for signing
+            const privateKey = engine.getPrivateKey('solana', 0);
+            
+            // TODO: Implement actual Solana NFT transfer using @solana/web3.js
+            // For now, return a mock response
+            console.log('📤 Sending Solana NFT:', {
+              mint: nft?.mint || tokenAddress,
+              from: solAccount.address,
+              to: toAddress
+            });
+            
+            throw new Error('Solana NFT sending not yet implemented. Coming soon!');
+            
+          } else {
+            // Send Ethereum NFT
+            const ethAccount = engine.getCurrentAccount('ethereum');
+            if (!ethAccount) {
+              throw new Error('No Ethereum account found');
+            }
+
+            // Get private key for signing
+            const privateKey = engine.getPrivateKey('ethereum', 0);
+            
+            // TODO: Implement actual Ethereum NFT transfer using ethers.js
+            // For now, return a mock response
+            console.log('📤 Sending Ethereum NFT:', {
+              contract: tokenAddress,
+              tokenId,
+              from: ethAccount.address,
+              to: toAddress
+            });
+            
+            throw new Error('Ethereum NFT sending not yet implemented. Coming soon!');
+          }
+        } catch (error: any) {
+          console.error('❌ SEND_NFT error:', error);
+          return { success: false, error: error.message };
+        }
+      }
+
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
         const account = engine.getCurrentAccount(chain);
