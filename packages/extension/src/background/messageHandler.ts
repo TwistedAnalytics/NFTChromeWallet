@@ -336,11 +336,32 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       case 'GET_PRIVATE_KEY': {
         const state = engine.getState();
+        console.log('🔑 GET_PRIVATE_KEY - State:', { 
+          isUnlocked: state.isUnlocked,
+          hasAccounts: !!state.accounts,
+          chain: validatedMessage.data?.chain 
+        });
+        
         if (!state.isUnlocked) {
           throw new Error('Wallet is locked');
         }
+        
         const { chain } = validatedMessage.data;
+        
+        if (!chain) {
+          throw new Error('Chain parameter is required');
+        }
+        
+        const account = state.accounts[chain]?.[0];
+        console.log('🔑 Account found:', !!account);
+        
+        if (!account) {
+          throw new Error(`No ${chain} account found`);
+        }
+        
         const privateKey = engine.getPrivateKey(chain, 0);
+        console.log('🔑 Private key retrieved for', chain);
+        
         return { success: true, data: { privateKey } };
       }
 
