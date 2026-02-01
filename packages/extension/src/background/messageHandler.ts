@@ -654,7 +654,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         console.log('🟢 Background: Wallet unlocked?', state.isUnlocked);
         
         if (!state.isUnlocked) {
-          throw new Error('Wallet is locked');
+          throw new Error('Wallet is locked. Please unlock your wallet first.');
         }
         
         const { chain, requestedPermissions } = validatedMessage.data;
@@ -666,23 +666,72 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           throw new Error(`No ${chain} account found`);
         }
         
-        await requestPermission({ 
-          ...validatedMessage.data, 
-          origin,
-          requestedAccounts: [account.address]
+        // Check if permission already granted
+        const hasPermission = await checkPermission(origin, chain);
+        if (hasPermission) {
+          console.log('🟢 Background: Permission already granted');
+          return { 
+            success: true, 
+            data: {
+              address: account.address,
+              publicKey: account.address
+            }
+          };
+        }
+        
+        // Show approval popup
+        console.log('🟢 Background: Showing approval popup for origin:', origin);
+        
+        return new Promise((resolve, reject) => {
+          chrome.windows.create({
+            url: `popup.html?type=connect&origin=${encodeURIComponent(origin)}&chain=${chain}&address=${account.address}`,
+            type: 'popup',
+            width: 360,
+            height: 600,
+          }, (window) => {
+            if (!window) {
+              reject(new Error('Failed to create popup'));
+              return;
+            }
+            
+            // Store approval callback
+            const checkApproval = setInterval(async () => {
+              const result = await chrome.storage.local.get([`approval_${window.id}`]);
+              const approval = result[`approval_${window.id}`];
+              
+              if (approval) {
+                clearInterval(checkApproval);
+                await chrome.storage.local.remove(`approval_${window.id}`);
+                
+                if (approval.approved) {
+                  // Grant permission
+                  await requestPermission({ 
+                    ...validatedMessage.data, 
+                    origin,
+                    requestedAccounts: [account.address]
+                  });
+                  
+                  resolve({ 
+                    success: true, 
+                    data: {
+                      address: account.address,
+                      publicKey: account.address
+                    }
+                  });
+                } else {
+                  reject(new Error('User rejected the request'));
+                }
+              }
+            }, 100);
+            
+            // Timeout after 2 minutes
+            setTimeout(() => {
+              clearInterval(checkApproval);
+              chrome.windows.remove(window.id!).catch(() => {});
+              reject(new Error('Request timeout'));
+            }, 120000);
+          });
         });
-        
-        const result = { 
-          success: true, 
-          data: {
-            address: account.address,
-            publicKey: account.address
-          }
-        };
-        
-        console.log('🟢 Background: Returning result:', result);
-        
-        return result;
       }
 
       case 'PERMISSION_CHECK': {
