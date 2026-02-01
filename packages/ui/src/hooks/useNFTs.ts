@@ -9,15 +9,39 @@ export const useNFTs = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNFTs = useCallback(async () => {
+  const fetchNFTs = useCallback(async (forceRefresh = false) => {
     if (!isUnlocked) return;
 
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const result = await chrome.storage.local.get(['lastNFTFetch', 'cachedNFTs']);
+      const lastFetch = result.lastNFTFetch || 0;
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for NFTs (they don't change often)
+
+      if (now - lastFetch < CACHE_DURATION && result.cachedNFTs) {
+        console.log('✅ Using cached NFTs (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
+        setNFTs(result.cachedNFTs);
+        return;
+      }
+    }
+
+    // Fetch fresh data
+    console.log('⏳ Fetching fresh NFTs...');
     setIsLoading(true);
     setError(null);
     try {
       const response = await send({ type: 'GET_NFTS' });
       if (response.success && response.data) {
         setNFTs(response.data.nfts);
+        
+        // Cache the NFTs
+        await chrome.storage.local.set({
+          lastNFTFetch: Date.now(),
+          cachedNFTs: response.data.nfts
+        });
+        
+        console.log('✅ Fresh NFTs fetched and cached');
       } else {
         setError(response.error || 'Failed to fetch NFTs');
       }
@@ -38,7 +62,9 @@ export const useNFTs = () => {
       });
       
       if (response.success) {
-        await fetchNFTs();
+        // Clear cache and force refresh after sending
+        await chrome.storage.local.remove(['lastNFTFetch', 'cachedNFTs']);
+        await fetchNFTs(true);
         return { success: true, txHash: response.data?.txHash };
       } else {
         setError(response.error || 'Failed to send NFT');
@@ -55,9 +81,9 @@ export const useNFTs = () => {
 
   useEffect(() => {
     if (isUnlocked) {
-      fetchNFTs();
+      fetchNFTs(); // Will use cache if available
     }
-  }, [isUnlocked]);
+  }, [isUnlocked, fetchNFTs]);
 
   return {
     nfts,
