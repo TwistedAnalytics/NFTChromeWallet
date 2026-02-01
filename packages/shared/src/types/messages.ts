@@ -33,7 +33,8 @@ export type MessageType =
   | 'DISCONNECT_SITE'           
   | 'APPROVE_CONNECTION'        
   | 'SIGN_APPROVED'             
-  | 'SIGN_REJECTED'             
+  | 'SIGN_REJECTED'
+  | 'CHANGE_PASSWORD'
   // Permissions
   | 'PERMISSION_REQUEST'
   | 'PERMISSION_CHECK'
