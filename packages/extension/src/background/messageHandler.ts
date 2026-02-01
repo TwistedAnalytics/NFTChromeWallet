@@ -3,6 +3,9 @@ import { MessageSchema, WalletCreateSchema, WalletUnlockSchema } from '@nft-wall
 import type { Message, MessageResponse, WalletState, VaultData } from '@nft-wallet/shared';
 import { checkPermission, requestPermission, revokePermission, listPermissions } from './permissionManager.js';
 import { checkBalanceChanges, checkNFTChanges } from './notificationHandler.js';
+import { Connection, PublicKey, Transaction, SystemProgram, sendAndConfirmTransaction, Keypair } from '@solana/web3.js';
+import { createTransferInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { ethers } from 'ethers';
 
 // Global wallet engine instance
 let walletEngine: WalletEngine | null = null;
@@ -619,16 +622,16 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         }
       }
 
-            case 'SEND_NFT': {
-        const { tokenAddress, tokenId, toAddress, nft } = validatedMessage.data;
+      case 'SEND_NFT': {
+        const { nft, toAddress } = validatedMessage.data;
         
-        console.log('🚀 SEND_NFT request:', { tokenAddress, tokenId, toAddress, nft });
+        console.log('🚀 SEND_NFT request:', { nft, toAddress });
         
         if (!engine.getState().isUnlocked) {
           throw new Error('Wallet is locked');
         }
 
-        // Determine chain from NFT data or token address format
+        // Determine chain from NFT data
         const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
         
         try {
@@ -640,17 +643,91 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
 
             // Get private key for signing
-            const privateKey = engine.getPrivateKey('solana', 0);
+            const privateKeyStr = engine.getPrivateKey('solana', 0);
+            const privateKey = Buffer.from(privateKeyStr, 'hex');
+            const fromKeypair = Keypair.fromSecretKey(privateKey);
             
-            // TODO: Implement actual Solana NFT transfer using @solana/web3.js
-            // For now, return a mock response
+            // Connect to Solana
+            const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+            const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, 'confirmed');
+            
+            // Get mint address
+            const mintAddress = new PublicKey(nft.mint || nft.id);
+            const toPublicKey = new PublicKey(toAddress);
+            
             console.log('📤 Sending Solana NFT:', {
-              mint: nft?.mint || tokenAddress,
+              mint: mintAddress.toString(),
               from: solAccount.address,
               to: toAddress
             });
             
-            throw new Error('Solana NFT sending not yet implemented. Coming soon!');
+            // Get associated token accounts
+            const fromATA = await getAssociatedTokenAddress(
+              mintAddress,
+              fromKeypair.publicKey,
+              false,
+              TOKEN_PROGRAM_ID
+            );
+            
+            const toATA = await getAssociatedTokenAddress(
+              mintAddress,
+              toPublicKey,
+              false,
+              TOKEN_PROGRAM_ID
+            );
+            
+            // Check if destination token account exists
+            const toAccountInfo = await connection.getAccountInfo(toATA);
+            
+            const transaction = new Transaction();
+            
+            // If destination account doesn't exist, create it
+            if (!toAccountInfo) {
+              const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
+              transaction.add(
+                createAssociatedTokenAccountInstruction(
+                  fromKeypair.publicKey,
+                  toATA,
+                  toPublicKey,
+                  mintAddress,
+                  TOKEN_PROGRAM_ID
+                )
+              );
+            }
+            
+            // Add transfer instruction (NFTs have amount = 1)
+            transaction.add(
+              createTransferInstruction(
+                fromATA,
+                toATA,
+                fromKeypair.publicKey,
+                1, // NFT amount is always 1
+                [],
+                TOKEN_PROGRAM_ID
+              )
+            );
+            
+            // Get recent blockhash
+            const { blockhash } = await connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = fromKeypair.publicKey;
+            
+            // Sign and send transaction
+            transaction.sign(fromKeypair);
+            const signature = await connection.sendRawTransaction(transaction.serialize());
+            
+            console.log('✅ Solana NFT sent! Signature:', signature);
+            
+            // Wait for confirmation
+            await connection.confirmTransaction(signature, 'confirmed');
+            
+            return { 
+              success: true, 
+              data: { 
+                txHash: signature,
+                explorerUrl: `https://solscan.io/tx/${signature}`
+              } 
+            };
             
           } else {
             // Send Ethereum NFT
@@ -662,20 +739,244 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             // Get private key for signing
             const privateKey = engine.getPrivateKey('ethereum', 0);
             
-            // TODO: Implement actual Ethereum NFT transfer using ethers.js
-            // For now, return a mock response
+            // Connect to Ethereum
+            const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
+            const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
+            const wallet = new ethers.Wallet(privateKey, provider);
+            
             console.log('📤 Sending Ethereum NFT:', {
-              contract: tokenAddress,
-              tokenId,
+              contract: nft.contract?.address,
+              tokenId: nft.tokenId,
               from: ethAccount.address,
               to: toAddress
             });
             
-            throw new Error('Ethereum NFT sending not yet implemented. Coming soon!');
+            // Determine if ERC721 or ERC1155
+            const isERC1155 = nft.contract?.tokenType?.includes('1155') || nft.balance > 1;
+            
+            if (isERC1155) {
+              // ERC1155 transfer
+              const abi = [
+                'function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data)'
+              ];
+              const contract = new ethers.Contract(nft.contract.address, abi, wallet);
+              
+              const tx = await contract.safeTransferFrom(
+                ethAccount.address,
+                toAddress,
+                nft.tokenId,
+                1, // Amount
+                '0x' // Data
+              );
+              
+              console.log('✅ Ethereum ERC1155 sent! Hash:', tx.hash);
+              await tx.wait();
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: tx.hash,
+                  explorerUrl: `https://etherscan.io/tx/${tx.hash}`
+                } 
+              };
+              
+            } else {
+              // ERC721 transfer
+              const abi = [
+                'function safeTransferFrom(address from, address to, uint256 tokenId)'
+              ];
+              const contract = new ethers.Contract(nft.contract.address, abi, wallet);
+              
+              const tx = await contract.safeTransferFrom(
+                ethAccount.address,
+                toAddress,
+                nft.tokenId
+              );
+              
+              console.log('✅ Ethereum ERC721 sent! Hash:', tx.hash);
+              await tx.wait();
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: tx.hash,
+                  explorerUrl: `https://etherscan.io/tx/${tx.hash}`
+                } 
+              };
+            }
           }
         } catch (error: any) {
           console.error('❌ SEND_NFT error:', error);
-          return { success: false, error: error.message };
+          return { 
+            success: false, 
+            error: error.message || 'Failed to send NFT' 
+          };
+        }
+      }
+
+      case 'SEND_TRANSACTION': {
+        const { chain, to, amount, tokenAddress } = validatedMessage.data;
+        
+        console.log('💸 SEND_TRANSACTION request:', { chain, to, amount, tokenAddress });
+        
+        if (!engine.getState().isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+
+        try {
+          if (chain === 'solana') {
+            // Send SOL or SPL tokens
+            const solAccount = engine.getCurrentAccount('solana');
+            if (!solAccount) {
+              throw new Error('No Solana account found');
+            }
+
+            const privateKeyStr = engine.getPrivateKey('solana', 0);
+            const privateKey = Buffer.from(privateKeyStr, 'hex');
+            const fromKeypair = Keypair.fromSecretKey(privateKey);
+            
+            const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+            const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, 'confirmed');
+            
+            const toPublicKey = new PublicKey(to);
+            
+            if (!tokenAddress) {
+              // Send native SOL
+              const lamports = Math.floor(parseFloat(amount) * 1e9); // Convert SOL to lamports
+              
+              const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                  fromPubkey: fromKeypair.publicKey,
+                  toPubkey: toPublicKey,
+                  lamports,
+                })
+              );
+              
+              const { blockhash } = await connection.getLatestBlockhash();
+              transaction.recentBlockhash = blockhash;
+              transaction.feePayer = fromKeypair.publicKey;
+              
+              transaction.sign(fromKeypair);
+              const signature = await connection.sendRawTransaction(transaction.serialize());
+              
+              console.log('✅ SOL sent! Signature:', signature);
+              await connection.confirmTransaction(signature, 'confirmed');
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: signature,
+                  explorerUrl: `https://solscan.io/tx/${signature}`
+                } 
+              };
+            } else {
+              // Send SPL token
+              const mintAddress = new PublicKey(tokenAddress);
+              const tokenAmount = Math.floor(parseFloat(amount) * 1e9); // Assuming 9 decimals
+              
+              const fromATA = await getAssociatedTokenAddress(mintAddress, fromKeypair.publicKey);
+              const toATA = await getAssociatedTokenAddress(mintAddress, toPublicKey);
+              
+              const transaction = new Transaction();
+              
+              // Check if destination account exists
+              const toAccountInfo = await connection.getAccountInfo(toATA);
+              if (!toAccountInfo) {
+                const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
+                transaction.add(
+                  createAssociatedTokenAccountInstruction(
+                    fromKeypair.publicKey,
+                    toATA,
+                    toPublicKey,
+                    mintAddress
+                  )
+                );
+              }
+              
+              transaction.add(
+                createTransferInstruction(
+                  fromATA,
+                  toATA,
+                  fromKeypair.publicKey,
+                  tokenAmount
+                )
+              );
+              
+              const { blockhash } = await connection.getLatestBlockhash();
+              transaction.recentBlockhash = blockhash;
+              transaction.feePayer = fromKeypair.publicKey;
+              
+              transaction.sign(fromKeypair);
+              const signature = await connection.sendRawTransaction(transaction.serialize());
+              
+              console.log('✅ SPL token sent! Signature:', signature);
+              await connection.confirmTransaction(signature, 'confirmed');
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: signature,
+                  explorerUrl: `https://solscan.io/tx/${signature}`
+                } 
+              };
+            }
+            
+          } else {
+            // Send ETH or ERC20 tokens
+            const ethAccount = engine.getCurrentAccount('ethereum');
+            if (!ethAccount) {
+              throw new Error('No Ethereum account found');
+            }
+
+            const privateKey = engine.getPrivateKey('ethereum', 0);
+            const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
+            const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
+            const wallet = new ethers.Wallet(privateKey, provider);
+            
+            if (!tokenAddress) {
+              // Send native ETH
+              const tx = await wallet.sendTransaction({
+                to,
+                value: ethers.parseEther(amount)
+              });
+              
+              console.log('✅ ETH sent! Hash:', tx.hash);
+              await tx.wait();
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: tx.hash,
+                  explorerUrl: `https://etherscan.io/tx/${tx.hash}`
+                } 
+              };
+            } else {
+              // Send ERC20 token
+              const abi = [
+                'function transfer(address to, uint256 amount) returns (bool)'
+              ];
+              const contract = new ethers.Contract(tokenAddress, abi, wallet);
+              
+              const tx = await contract.transfer(to, ethers.parseUnits(amount, 18));
+              
+              console.log('✅ ERC20 sent! Hash:', tx.hash);
+              await tx.wait();
+              
+              return { 
+                success: true, 
+                data: { 
+                  txHash: tx.hash,
+                  explorerUrl: `https://etherscan.io/tx/${tx.hash}`
+                } 
+              };
+            }
+          }
+        } catch (error: any) {
+          console.error('❌ SEND_TRANSACTION error:', error);
+          return { 
+            success: false, 
+            error: error.message || 'Failed to send transaction' 
+          };
         }
       }
 
