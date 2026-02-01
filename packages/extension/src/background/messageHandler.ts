@@ -554,9 +554,36 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       case 'PERMISSION_REQUEST': {
         const origin = sender.origin || sender.url || 'unknown';
-        const granted = await requestPermission({ ...validatedMessage.data, origin });
-        return { success: true, data: granted };
+        const state = engine.getState();
+  
+      if (!state.isUnlocked) {
+        throw new Error('Wallet is locked');
       }
+  
+      // Get the account for the requested chain
+      const { chain, requestedPermissions } = validatedMessage.data;
+      const account = engine.getCurrentAccount(chain);
+  
+      if (!account) {
+        throw new Error(`No ${chain} account found`);
+      }
+  
+      // Grant permission
+      await requestPermission({ 
+        ...validatedMessage.data, 
+        origin,
+        requestedAccounts: [account.address]
+      });
+  
+  // Return account info (this is what connect() expects)
+  return { 
+    success: true, 
+    data: {
+      address: account.address,
+      publicKey: account.address
+    }
+  };
+}
 
       case 'PERMISSION_CHECK': {
         const origin = sender.origin || sender.url || 'unknown';
