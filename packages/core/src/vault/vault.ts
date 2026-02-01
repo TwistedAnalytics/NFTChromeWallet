@@ -316,23 +316,17 @@ export class Vault {
  * Start auto-lock timer
  */
 private startAutoLockTimer(): void {
-  // Don't auto-lock in browser extensions - let WalletEngine handle it
-  // Only start timer if explicitly set and not in extension context
-  if (typeof chrome === 'undefined' || !chrome.runtime) {
-    this.stopAutoLockTimer();
-    this.autoLockTimer = setTimeout(() => {
-      this.lock();
-    }, this.autoLockMinutes * 60 * 1000);
-  }
+  // Auto-lock is handled by WalletEngine in extension context
+  // This method is kept for compatibility but does nothing
+  this.stopAutoLockTimer();
 }
 
-  /**
-   * Stop auto-lock timer
-   */
-  private stopAutoLockTimer(): void {
-    if (this.autoLockTimer) {
-      clearTimeout(this.autoLockTimer);
-      this.autoLockTimer = null;
-    }
+/**
+ * Stop auto-lock timer
+ */
+private stopAutoLockTimer(): void {
+  if (this.autoLockTimer) {
+    clearTimeout(this.autoLockTimer);
+    this.autoLockTimer = null;
   }
 }
