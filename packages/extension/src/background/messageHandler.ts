@@ -20,13 +20,19 @@ const STORAGE_KEYS = {
 async function getWalletEngine(): Promise<WalletEngine> {
   if (!walletEngine) {
     // Load state from storage
-    const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE, STORAGE_KEYS.VAULT_DATA, 'lastActivityTime', 'autoLockMinutes']);
+    const result = await chrome.storage.local.get([
+      STORAGE_KEYS.WALLET_STATE, 
+      STORAGE_KEYS.VAULT_DATA, 
+      'lastActivityTime', 
+      'autoLockMinutes',
+      'unlockedPassword' // Temporary storage for keeping vault unlocked
+    ]);
     const state = result[STORAGE_KEYS.WALLET_STATE];
     
     walletEngine = new WalletEngine(state);
     
-    // Check if wallet should still be unlocked based on activity
-    if (state?.isUnlocked && result.lastActivityTime) {
+    // If wallet was unlocked, check if it should still be unlocked
+    if (state?.isUnlocked && result.lastActivityTime && result.unlockedPassword) {
       const autoLockMinutes = result.autoLockMinutes || 5;
       const inactiveTime = Date.now() - result.lastActivityTime;
       const lockThreshold = autoLockMinutes * 60 * 1000;
@@ -35,10 +41,23 @@ async function getWalletEngine(): Promise<WalletEngine> {
         console.log('🔒 Locking wallet due to inactivity on service worker restart');
         walletEngine.lockWallet();
         await saveWalletState(walletEngine.getState());
+        // Clear password
+        await chrome.storage.local.remove('unlockedPassword');
       } else {
-        console.log('✅ Wallet still within auto-lock window, keeping unlocked state');
-        // Wallet state is already set from storage, just update activity
-        await chrome.storage.local.set({ lastActivityTime: Date.now() });
+        console.log('✅ Wallet still within auto-lock window, restoring vault unlock state');
+        try {
+          // Re-unlock the vault with stored password
+          const vaultData = result[STORAGE_KEYS.VAULT_DATA];
+          if (vaultData && result.unlockedPassword) {
+            await walletEngine.unlockWallet(vaultData, result.unlockedPassword);
+            console.log('✅ Vault successfully restored to unlocked state');
+          }
+        } catch (error) {
+          console.error('❌ Failed to restore vault unlock state:', error);
+          walletEngine.lockWallet();
+          await saveWalletState(walletEngine.getState());
+          await chrome.storage.local.remove('unlockedPassword');
+        }
       }
     }
   }
