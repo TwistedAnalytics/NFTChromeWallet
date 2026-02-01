@@ -125,10 +125,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   }
   await engine.unlockWallet(vaultData, data.password);
   
-  // Restore saved auto-lock time
-  if (result.autoLockMinutes) {
-    engine.setAutoLockTime(result.autoLockMinutes);
-  }
+  // Restore saved auto-lock time and set initial activity time
+  const autoLockMinutes = result.autoLockMinutes || 5;
+  engine.setAutoLockTime(autoLockMinutes);
+  await chrome.storage.local.set({ 
+    lastActivityTime: Date.now(),
+    autoLockEnabled: true,
+    autoLockMinutes: autoLockMinutes
+  });
   
   const state = engine.getState();
   const solAccount = engine.getCurrentAccount('solana');
