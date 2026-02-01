@@ -129,3 +129,20 @@ export class SolanaProvider {
     // Simplified event emitter
   }
 }
+
+class PublicKey {
+  constructor(public value: string) {}
+
+  toString(): string {
+    return this.value;
+  }
+
+  toBase58(): string {
+    return this.value;
+  }
+
+  toBytes(): Uint8Array {
+    // Simple base58 decode - you may need a proper implementation
+    return new Uint8Array();
+  }
+}
