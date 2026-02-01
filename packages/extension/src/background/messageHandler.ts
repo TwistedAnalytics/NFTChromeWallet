@@ -616,22 +616,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   };
 }
 
-      case 'PERMISSION_CHECK': {
-        const origin = sender.origin || sender.url || 'unknown';
-        const hasPermission = await checkPermission(origin, validatedMessage.data.chain);
-        return { success: true, data: hasPermission };
-      }
-
-      case 'PERMISSION_REVOKE': {
-        await revokePermission(validatedMessage.data.origin);
-        return { success: true };
-      }
-
-      case 'PERMISSION_LIST': {
-        const permissions = await listPermissions();
-        return { success: true, data: permissions };
-      }
-
       case 'SIGN_MESSAGE': {
         const { message: msg, chain, address } = validatedMessage.data;
         const signature = await engine.signMessage(msg, chain, address);
