@@ -24,6 +24,14 @@ async function getWalletEngine(): Promise<WalletEngine> {
     const state = result[STORAGE_KEYS.WALLET_STATE];
     
     walletEngine = new WalletEngine(state);
+    
+    // If wallet was unlocked, we need to check if it should still be unlocked
+    if (state?.isUnlocked) {
+      console.log('⚠️ Wallet state says unlocked, but vault needs to be re-unlocked after service worker restart');
+      // Mark as locked since vault is not actually unlocked
+      walletEngine.lockWallet();
+      await saveWalletState(walletEngine.getState());
+    }
   }
   return walletEngine;
 }
