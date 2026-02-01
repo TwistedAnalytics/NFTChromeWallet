@@ -26,7 +26,7 @@ export const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full">
+    <div className="h-full">
       {/* Hero Section with Balance */}
       <div className="relative overflow-hidden">
         {/* Purple gradient background */}
