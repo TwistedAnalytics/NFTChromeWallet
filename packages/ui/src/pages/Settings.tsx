@@ -154,7 +154,7 @@ useEffect(() => {
   };
 
   return (
-      <div className="p-4 max-h-[550px] overflow-y-auto">
+      <div className="p-4">
       <h2 className="text-2xl font-bold mb-6">Settings</h2>
 
       {/* Security Section */}
