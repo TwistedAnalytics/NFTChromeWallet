@@ -40,30 +40,6 @@ export class WalletEngine {
     }
   }
 
-  private resetAutoLockTimer(): void {
-    if (this.autoLockTimer) {
-      clearTimeout(this.autoLockTimer);
-    }
-    
-    if (this.state.isUnlocked) {
-      this.autoLockTimer = setTimeout(() => {
-        this.lockWallet();
-      }, this.autoLockMinutes * 60 * 1000);
-    }
-  }
-
-  private resetAutoLockTimer(): void {
-    if (this.autoLockTimer) {
-      clearTimeout(this.autoLockTimer);
-    }
-    
-    if (this.state.isUnlocked) {
-      this.autoLockTimer = setTimeout(() => {
-        this.lockWallet();
-      }, this.autoLockMinutes * 60 * 1000);
-    }
-  }
-
   /**
    * Create new wallet
    */
