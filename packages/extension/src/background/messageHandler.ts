@@ -904,7 +904,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
 
             const privateKeyStr = engine.getPrivateKey('solana', 0);
-            const privateKey = hexToUint8Array(privateKeyStr);
+            const secretKey = await solanaSecretKeyFromPrivateKey(privateKeyStr);
             const fromKeypair = Keypair.fromSecretKey(privateKey);
             
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
