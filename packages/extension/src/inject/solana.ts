@@ -72,43 +72,35 @@ export class SolanaProvider {
   }
 
   async connect(): Promise<{ publicKey: PublicKey }> {
+  console.log('🔵 VaultNFT: connect() called');
+  
+  try {
     const account = await this.sendMessage('PERMISSION_REQUEST', {
       chain: 'solana',
       requestedPermissions: ['connect'],
     });
 
+    console.log('🔵 VaultNFT: Received account data:', account);
+    console.log('🔵 VaultNFT: account.address:', account?.address);
+
     if (account && account.address) {
       this.publicKey = new PublicKey(account.address);
       this.connected = true;
       this.emit('connect', this.publicKey);
+      
+      console.log('🔵 VaultNFT: Connected successfully');
+      console.log('🔵 VaultNFT: publicKey:', this.publicKey);
     }
 
-    return { publicKey: this.publicKey! };
+    const result = { publicKey: this.publicKey! };
+    console.log('🔵 VaultNFT: Returning:', result);
+    return result;
+  } catch (error) {
+    console.error('🔴 VaultNFT: connect() error:', error);
+    throw error;
   }
-
-  async disconnect(): Promise<void> {
-    this.publicKey = null;
-    this.connected = false;
-    this.emit('disconnect');
-  }
-
-  async signMessage(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array }> {
-    if (!this.publicKey) {
-      throw new Error('Wallet not connected');
-    }
-
-    const messageStr = Buffer.from(message).toString('base64');
-    const signature = await this.sendMessage('SIGN_MESSAGE', {
-      message: messageStr,
-      chain: 'solana',
-      address: this.publicKey.toString(),
-    });
-
-    return {
-      signature: Buffer.from(signature, 'base64'),
-    };
-  }
-
+}
+  
   async signTransaction(transaction: any): Promise<any> {
     if (!this.publicKey) {
       throw new Error('Wallet not connected');
