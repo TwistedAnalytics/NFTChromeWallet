@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings';
 import { useWallet } from './hooks/useWallet';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import './index.css';
+import { History } from './pages/History';
 
 const AppContent: React.FC = () => {
   const { isUnlocked, address, isLoading, createWallet, unlockWallet } = useWallet();
