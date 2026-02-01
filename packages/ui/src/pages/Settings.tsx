@@ -48,7 +48,7 @@ useEffect(() => {
   });
 }, []);
 
-const handleChangePassword = async () => {
+  const handleChangePassword = async () => {
   if (newPassword !== confirmPassword) {
     alert('Passwords do not match');
     return;
@@ -57,12 +57,29 @@ const handleChangePassword = async () => {
     alert('Password must be at least 8 characters');
     return;
   }
-  // TODO: Implement password change in background
-  alert('Password change not yet implemented');
-  setShowChangePassword(false);
-  setCurrentPassword('');
-  setNewPassword('');
-  setConfirmPassword('');
+  
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'CHANGE_PASSWORD',
+      data: {
+        currentPassword,
+        newPassword
+      }
+    });
+    
+    if (response.success) {
+      alert('Password changed successfully!');
+      setShowChangePassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      alert(response.error || 'Failed to change password');
+    }
+  } catch (error: any) {
+    console.error('Error changing password:', error);
+    alert(error.message || 'Error changing password');
+  }
 };
 
   const handleShowSeed = async () => {
