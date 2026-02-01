@@ -13,6 +13,15 @@ let walletEngine: WalletEngine | null = null;
 // At the top of the file, add a pending requests map
 const pendingConnectionRequests = new Map<string, Promise<any>>();
 
+// Helper function to convert hex string to Uint8Array (replaces Buffer in service worker)
+function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
 // Storage keys
 const STORAGE_KEYS = {
   VAULT_DATA: 'vaultData',
@@ -648,7 +657,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
             // Get private key for signing
             const privateKeyStr = engine.getPrivateKey('solana', 0);
-            const privateKey = Buffer.from(privateKeyStr, 'hex');
+            const privateKey = hexToUint8Array(privateKeyStr);
             const fromKeypair = Keypair.fromSecretKey(privateKey);
             
             // Connect to Solana
@@ -842,7 +851,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
 
             const privateKeyStr = engine.getPrivateKey('solana', 0);
-            const privateKey = Buffer.from(privateKeyStr, 'hex');
+            const privateKey = hexToUint8Array(privateKeyStr);
             const fromKeypair = Keypair.fromSecretKey(privateKey);
             
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
