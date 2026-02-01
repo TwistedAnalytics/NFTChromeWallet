@@ -14,6 +14,7 @@
     "@nft-wallet/sol": "workspace:*",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3",
     "esbuild": "^0.19.0",
     "ethers": "^6.16.0"
   },
