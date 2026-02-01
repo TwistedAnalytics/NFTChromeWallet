@@ -24,10 +24,16 @@ window.vaultNFT = {
   solana: solanaProvider,
 };
 
-// Inject as Phantom for compatibility
-if (!window.solana) {
-  window.solana = solanaProvider;
-}
+// Protect window.solana from being overwritten
+Object.defineProperty(window, 'solana', {
+  get() {
+    return solanaProvider;
+  },
+  set(newProvider) {
+    console.warn('Another wallet tried to overwrite window.solana, blocked!');
+  },
+  configurable: false,
+});
 
 // Set window.ethereum if not already set
 if (!window.ethereum) {
@@ -44,34 +50,8 @@ if (!window.phantom) {
 // Announce provider using EIP-6963
 announceProvider(ethereumProvider);
 
-console.log('VaultNFT providers ready');
+// Dispatch ready events
+window.dispatchEvent(new Event('solana#initialized'));
+window.dispatchEvent(new Event('ethereum#initialized'));
 
-// Announce Solana wallet
-if (typeof window !== 'undefined') {
-  // Set wallet as available
-  window.solana = solanaProvider;
-  
-  // Dispatch ready event
-  window.dispatchEvent(new Event('solana#initialized'));
-  
-  // Also announce as a standard wallet for Magic Eden detection
-  window.dispatchEvent(new CustomEvent('wallet-standard:register', {
-    detail: {
-      name: 'VaultNFT',
-      icon: 'data:image/svg+xml;base64,...', // Your icon
-      chains: ['solana:mainnet'],
-      features: ['solana:signTransaction', 'solana:signMessage'],
-    }
-  }));
-  
-  console.log('🎯 VaultNFT Solana provider injected and announced');
-}
-
-// Announce Ethereum wallet
-if (typeof window !== 'undefined') {
-  window.ethereum = ethereumProvider;
-  
-  window.dispatchEvent(new Event('ethereum#initialized'));
-  
-  console.log('🎯 VaultNFT Ethereum provider injected');
-}
+console.log('VaultNFT providers ready and protected');
