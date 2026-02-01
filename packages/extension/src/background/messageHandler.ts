@@ -626,8 +626,12 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             case 'SIGN_MESSAGE': {
         const { message: msg, chain, address } = validatedMessage.data;
         
+        console.log('🔏 SIGN_MESSAGE received:', { msg: msg.substring(0, 50), chain, address });
+        
         // Show approval popup for signing
         const origin = sender.origin || sender.url || 'unknown';
+        
+        console.log('🔏 Creating approval popup for origin:', origin);
         
         return new Promise((resolve) => {
           chrome.windows.create({
@@ -636,23 +640,32 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             width: 400,
             height: 600,
           }, (window) => {
+            console.log('🔏 Approval popup created:', window?.id);
+            
             // Listen for approval response
             const listener = (message: any, messageSender: any, sendResponse: any) => {
+              console.log('🔏 Received message in listener:', message.type);
+              
               if (message.type === 'SIGN_APPROVED') {
                 chrome.runtime.onMessage.removeListener(listener);
+                
+                console.log('🔏 User approved, signing message...');
                 
                 // Sign the message
                 engine.signMessage(msg, chain, address)
                   .then(signature => {
+                    console.log('🔏 Message signed successfully');
                     resolve({ success: true, data: signature });
                     if (window?.id) chrome.windows.remove(window.id);
                   })
                   .catch(error => {
+                    console.error('🔏 Signing error:', error);
                     resolve({ success: false, error: error.message });
                     if (window?.id) chrome.windows.remove(window.id);
                   });
               } else if (message.type === 'SIGN_REJECTED') {
                 chrome.runtime.onMessage.removeListener(listener);
+                console.log('🔏 User rejected signature');
                 resolve({ success: false, error: 'User rejected signature' });
                 if (window?.id) chrome.windows.remove(window.id);
               }
