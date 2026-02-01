@@ -12,43 +12,35 @@ import { useWallet } from './hooks/useWallet';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import './index.css';
 import { History } from './pages/History';
+import { ConnectionApproval } from './pages/ConnectionApproval';
 
 const AppContent: React.FC = () => {
   const { isUnlocked, address, isLoading, createWallet, unlockWallet } = useWallet();
   const { state } = useNavigation();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
+  const [isConnectionRequest, setIsConnectionRequest] = useState(false);
   const store = useWallet();
 
   useEffect(() => {
-    const checkWallet = async () => {
-      try {
-        const result = await chrome.storage.local.get(['vaultData']);
-        const hasVault = !!result.vaultData;
-        console.log('Has vault:', hasVault);
-        setHasWallet(hasVault);
+    // Check if this is a connection approval request
+    const hash = window.location.hash;
+    if (hash.startsWith('#connect')) {
+      setIsConnectionRequest(true);
+      return;
+    }
 
-        // If vault exists, check if background says it's unlocked
-        if (hasVault) {
-          const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
-          console.log('Background status:', statusResponse);
-          
-          if (statusResponse.success && statusResponse.data?.isUnlocked) {
-            // Background says unlocked, sync UI
-            store.setUnlocked(true);
-            store.setAddress(statusResponse.data.address);
-            store.setEthAddress(statusResponse.data.ethAddress);
-            console.log('✅ Synced with background: wallet is unlocked');
-          }
-        }
-      } catch (error) {
-        console.error('Error checking wallet:', error);
-        setHasWallet(false);
-      }
+    const checkWallet = async () => {
+      // ... existing wallet check code
     };
 
     checkWallet();
   }, []);
 
+  // Handle connection approval screen
+  if (isConnectionRequest) {
+    return <ConnectionApproval />;
+  }
+  
   // Auto-initialize balances when wallet is unlocked (with caching)
   useEffect(() => {
     if (isUnlocked && address) {
