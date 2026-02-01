@@ -552,44 +552,44 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: settings };
       }
 
-      case 'PERMISSION_REQUEST': {
-  console.log('🟢 Background: PERMISSION_REQUEST received', validatedMessage.data);
-  const origin = sender.origin || sender.url || 'unknown';
-  const state = engine.getState();
-  
-  console.log('🟢 Background: Wallet unlocked?', state.isUnlocked);
-  
-  if (!state.isUnlocked) {
-    throw new Error('Wallet is locked');
-  }
-  
-  const { chain, requestedPermissions } = validatedMessage.data;
-  const account = engine.getCurrentAccount(chain);
-  
-  console.log('🟢 Background: Account for', chain, ':', account);
-  
-  if (!account) {
-    throw new Error(`No ${chain} account found`);
-  }
-  
-  await requestPermission({ 
-    ...validatedMessage.data, 
-    origin,
-    requestedAccounts: [account.address]
-  });
-  
-  const result = { 
-    success: true, 
-    data: {
-      address: account.address,
-      publicKey: account.address
-    }
-  };
-  
-  console.log('🟢 Background: Returning result:', result);
-  
-  return result;
-}
+            case 'PERMISSION_REQUEST': {
+        console.log('🟢 Background: PERMISSION_REQUEST received', validatedMessage.data);
+        const origin = sender.origin || sender.url || 'unknown';
+        const state = engine.getState();
+        
+        console.log('🟢 Background: Wallet unlocked?', state.isUnlocked);
+        
+        if (!state.isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+        
+        const { chain, requestedPermissions } = validatedMessage.data;
+        const account = engine.getCurrentAccount(chain);
+        
+        console.log('🟢 Background: Account for', chain, ':', account);
+        
+        if (!account) {
+          throw new Error(`No ${chain} account found`);
+        }
+        
+        await requestPermission({ 
+          ...validatedMessage.data, 
+          origin,
+          requestedAccounts: [account.address]
+        });
+        
+        const result = { 
+          success: true, 
+          data: {
+            address: account.address,
+            publicKey: account.address
+          }
+        };
+        
+        console.log('🟢 Background: Returning result:', result);
+        
+        return result;
+      }
   
       // Get the account for the requested chain
       const { chain, requestedPermissions } = validatedMessage.data;
