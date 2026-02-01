@@ -26,7 +26,7 @@ if (fs.existsSync(uiDistPath)) {
   fs.copyFileSync(uiDistPath, path.join(distDir, 'popup.html'));
 }
 
-// Create icons directory and copy custom icons if available
+// Create icons directory
 const iconsDir = path.join(distDir, 'icons');
 if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
@@ -45,18 +45,7 @@ if (fs.existsSync(publicIconsDir)) {
   console.log('✅ Copied custom icons from public/icons');
 }
 
-// Create simple SVG placeholder icons (fallback)
-const createIcon = (size) => {
-  const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${size}" height="${size}" fill="#6366f1"/>
-  <text x="50%" y="50%" font-family="Arial" font-size="${size * 0.5}" fill="white" text-anchor="middle" dominant-baseline="middle">V</text>
-</svg>`;
-  return svg;
-};
-
-// Create simple placeholder PNG files (1x1 pixel data URLs converted to buffer)
 const createPlaceholderPNG = () => {
-  // Minimal valid PNG file (1x1 transparent pixel)
   return Buffer.from([
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
     0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
@@ -83,28 +72,12 @@ const buildOptions = {
   logLevel: 'info',
 };
 
-// Background script needs ESM for Buffer polyfill
-const backgroundBuildOptions = {
-  bundle: true,
-  format: 'esm',
-  platform: 'browser',
-  target: 'es2022',
-  sourcemap: true,
-  logLevel: 'info',
-};
-
-// Buffer polyfill banner for background script
-const bufferPolyfill = {
-  js: `import { Buffer } from 'buffer'; globalThis.Buffer = Buffer;`
-};
-
 if (watch) {
-  // Watch mode using context
   const ctxBackground = await esbuild.context({
-    ...backgroundBuildOptions,
+    ...buildOptions,
     entryPoints: ['src/background/index.ts'],
     outfile: 'dist/background.js',
-    banner: bufferPolyfill,
+    inject: ['./buffer-shim.js'],
   });
 
   const ctxContent = await esbuild.context({
@@ -128,13 +101,12 @@ if (watch) {
   console.log('✅ Extension built successfully!');
   console.log('👀 Watching for changes...');
 } else {
-  // Production build
   await Promise.all([
     esbuild.build({
-      ...backgroundBuildOptions,
+      ...buildOptions,
       entryPoints: ['src/background/index.ts'],
       outfile: 'dist/background.js',
-      banner: bufferPolyfill,
+      inject: ['./buffer-shim.js'],
     }),
     esbuild.build({
       ...buildOptions,
