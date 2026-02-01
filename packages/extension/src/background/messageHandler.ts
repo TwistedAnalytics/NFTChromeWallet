@@ -383,11 +383,11 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const state = engine.getState();
         
         if (!state.isUnlocked) {
-          throw new Error('Wallet is locked');
+          return { success: false, error: 'Wallet is locked' };
         }
 
         if (!state.vaultData) {
-          throw new Error('No vault data found');
+          return { success: false, error: 'No vault data found' };
         }
 
         try {
@@ -406,8 +406,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           
           console.log('✅ Password changed successfully');
           return { success: true, data: { message: 'Password changed successfully' } };
-        } catch (error) {
-          throw new Error('Current password is incorrect');
+        } catch (error: any) {
+          console.error('❌ Password change failed:', error.message);
+          return { success: false, error: 'Current password is incorrect' };
         }
       }
 
