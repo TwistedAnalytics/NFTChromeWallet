@@ -669,7 +669,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
         
         try {
-          if (chain === 'solana') {
+            if (chain === 'solana') {
             // Send Solana NFT
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
@@ -678,14 +678,15 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
             // Get private key for signing
             const privateKeyStr = engine.getPrivateKey('solana', 0);
-            console.log('Private key length:', privateKeyStr.length);
+            console.log('Private key string length:', privateKeyStr.length);
             
-            // Convert hex private key to Uint8Array
-            const privateKey = hexToUint8Array(privateKeyStr);
-            console.log('Private key bytes length:', privateKey.length);
+            // Convert to proper Solana secret key (64 bytes)
+            const secretKey = await solanaSecretKeyFromPrivateKey(privateKeyStr);
+            console.log('Secret key bytes length:', secretKey.length);
             
-            const fromKeypair = Keypair.fromSecretKey(privateKey);
+            const fromKeypair = Keypair.fromSecretKey(secretKey);
             console.log('Keypair created:', fromKeypair.publicKey.toString());
+            console.log('Keypair matches account:', fromKeypair.publicKey.toString() === solAccount.address);
             
             // Connect to Solana
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
