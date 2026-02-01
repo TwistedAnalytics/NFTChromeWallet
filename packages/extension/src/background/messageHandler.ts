@@ -7,6 +7,9 @@ import { checkBalanceChanges, checkNFTChanges } from './notificationHandler.js';
 // Global wallet engine instance
 let walletEngine: WalletEngine | null = null;
 
+// At the top of the file, add a pending requests map
+const pendingConnectionRequests = new Map<string, Promise<any>>();
+
 // Storage keys
 const STORAGE_KEYS = {
   VAULT_DATA: 'vaultData',
@@ -646,6 +649,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: settings };
       }
 
+      // Then update the PERMISSION_REQUEST case:
       case 'PERMISSION_REQUEST': {
         console.log('🟢 Background: PERMISSION_REQUEST received', validatedMessage.data);
         const origin = sender.origin || sender.url || 'unknown';
@@ -679,12 +683,19 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           };
         }
         
-        // Show approval popup - use chrome.windows.create with correct path
-        console.log('🟢 Background: Showing approval popup for origin:', origin);
+        // Check if there's already a pending request for this origin+chain
+        const requestKey = `${origin}_${chain}`;
+        if (pendingConnectionRequests.has(requestKey)) {
+          console.log('🟢 Background: Reusing pending approval for', requestKey);
+          return pendingConnectionRequests.get(requestKey)!;
+        }
         
-        return new Promise((resolve, reject) => {
+        // Show approval popup
+        console.log('🟢 Background: Showing approval popup for origin:', origin, 'chain:', chain);
+        
+        const approvalPromise = new Promise((resolve, reject) => {
           // Store the pending request
-          const requestId = `connect_${Date.now()}`;
+          const requestId = `connect_${Date.now()}_${chain}`;
           chrome.storage.local.set({
             [requestId]: {
               type: 'connect',
@@ -702,6 +713,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             height: 600,
           }, (window) => {
             if (!window) {
+              pendingConnectionRequests.delete(requestKey);
               reject(new Error('Failed to create popup'));
               return;
             }
@@ -715,12 +727,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               
               if (approval) {
                 clearInterval(checkApproval);
+                clearInterval(checkWindow);
+                pendingConnectionRequests.delete(requestKey);
                 
                 // Clean up
                 await chrome.storage.local.remove([requestId, `${requestId}_result`]);
                 
                 if (approval.approved) {
-                  console.log('🟢 User approved connection');
+                  console.log('🟢 User approved connection for', chain);
                   
                   // Grant permission
                   await requestPermission({ 
@@ -737,7 +751,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                     }
                   });
                 } else {
-                  console.log('🔴 User rejected connection');
+                  console.log('🔴 User rejected connection for', chain);
                   reject(new Error('User rejected the request'));
                 }
               }
@@ -749,6 +763,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 if (chrome.runtime.lastError || !w) {
                   clearInterval(checkWindow);
                   clearInterval(checkApproval);
+                  pendingConnectionRequests.delete(requestKey);
                   chrome.storage.local.remove([requestId, `${requestId}_result`]);
                   reject(new Error('User closed the popup'));
                 }
@@ -760,11 +775,17 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               clearInterval(checkApproval);
               clearInterval(checkWindow);
               chrome.windows.remove(window.id!).catch(() => {});
+              pendingConnectionRequests.delete(requestKey);
               chrome.storage.local.remove([requestId, `${requestId}_result`]);
               reject(new Error('Request timeout'));
             }, 120000);
           });
         });
+        
+        // Store the pending promise
+        pendingConnectionRequests.set(requestKey, approvalPromise);
+        
+        return approvalPromise;
       }
 
       case 'PERMISSION_CHECK': {
