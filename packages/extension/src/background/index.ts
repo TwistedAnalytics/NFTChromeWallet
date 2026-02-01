@@ -4,31 +4,18 @@ import { startBalanceMonitoring } from './notificationHandler.js';
 console.log('VaultNFT background service worker starting...');
 
 // Initialize on install
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('VaultNFT installed');
-});
-
-// Message handler
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  handleMessage(message, sender)
-    .then(sendResponse)
-    .catch((error) => {
-      console.error('Message handler error:', error);
-      sendResponse({ success: false, error: error.message });
+  
+  // Set default auto-lock settings
+  const result = await chrome.storage.local.get(['autoLockEnabled', 'autoLockMinutes']);
+  if (result.autoLockEnabled === undefined) {
+    await chrome.storage.local.set({ 
+      autoLockEnabled: true,
+      autoLockMinutes: 5,
+      lastActivityTime: Date.now()
     });
-  return true;
-});
-
-// Start balance monitoring when extension loads
-chrome.runtime.onStartup.addListener(() => {
-  console.log('Extension started, initializing balance monitoring...');
-});
-
-// Keep service worker alive
-chrome.alarms.create('keepAlive', { periodInMinutes: 1 });
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepAlive') {
-    console.log('Service worker kept alive');
+    console.log('Auto-lock defaults set: enabled=true, minutes=5');
   }
 });
 
@@ -53,9 +40,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// Start balance monitoring when extension loads
+chrome.runtime.onStartup.addListener(() => {
+  console.log('Extension started, initializing balance monitoring...');
+});
+
 // Set up auto-lock alarm - check every minute
 chrome.alarms.create('autoLock', {
   periodInMinutes: 1,
+});
+
+// Keep service worker alive
+chrome.alarms.create('keepAlive', { 
+  periodInMinutes: 1 
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -63,18 +60,30 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     // Check if wallet should be locked due to inactivity
     const result = await chrome.storage.local.get(['lastActivityTime', 'autoLockMinutes', 'autoLockEnabled', 'walletState']);
     
-    if (result.autoLockEnabled && result.walletState?.isUnlocked && result.lastActivityTime) {
+    console.log('Auto-lock check:', {
+      enabled: result.autoLockEnabled,
+      unlocked: result.walletState?.isUnlocked,
+      lastActivity: result.lastActivityTime ? new Date(result.lastActivityTime).toLocaleTimeString() : 'never',
+      autoLockMinutes: result.autoLockMinutes
+    });
+    
+    // Default to enabled if not set
+    const autoLockEnabled = result.autoLockEnabled !== false;
+    
+    if (autoLockEnabled && result.walletState?.isUnlocked && result.lastActivityTime) {
       const autoLockMinutes = result.autoLockMinutes || 5;
       const inactiveTime = Date.now() - result.lastActivityTime;
       const lockThreshold = autoLockMinutes * 60 * 1000;
       
+      console.log(`Inactive for ${Math.floor(inactiveTime / 1000 / 60)} minutes (threshold: ${autoLockMinutes} minutes)`);
+      
       if (inactiveTime >= lockThreshold) {
-        console.log(`Auto-locking wallet after ${autoLockMinutes} minutes of inactivity`);
+        console.log(`🔒 Auto-locking wallet after ${autoLockMinutes} minutes of inactivity`);
         
         // Send lock message
-        handleMessage({ type: 'WALLET_LOCK' }, {})
-          .then(() => console.log('Wallet auto-locked'))
-          .catch(err => console.error('Auto-lock failed:', err));
+        handleMessage({ type: 'WALLET_LOCK', data: {} }, {})
+          .then(() => console.log('✅ Wallet auto-locked'))
+          .catch(err => console.error('❌ Auto-lock failed:', err));
       }
     }
   }
@@ -83,3 +92,5 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     console.log('Service worker kept alive');
   }
 });
+
+console.log('VaultNFT background service worker ready');
