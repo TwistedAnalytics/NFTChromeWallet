@@ -330,4 +330,3 @@ private stopAutoLockTimer(): void {
     this.autoLockTimer = null;
     }
   }
-}
