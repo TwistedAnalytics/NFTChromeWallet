@@ -10,26 +10,27 @@ export const WalletUnlock: React.FC<WalletUnlockProps> = ({ onSubmit }) => {
   const [error, setError] = useState<string | null>(null);
 
   const handleUnlock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!password) {
-      setError('Please enter your password');
-      return;
-    }
+  e.preventDefault();
+  
+  if (!password) {
+    setError('Please enter your password');
+    return;
+  }
 
-    setIsUnlocking(true);
-    setError(null);
+  setIsUnlocking(true);
+  setError(null);
 
-    const result = await onSubmit(password);
+  const result = await onSubmit(password);
 
-    setIsUnlocking(false);
+  setIsUnlocking(false);
 
-    if (!result.success) {
-      setError('ERROR');
-      setPassword('');
-    }
+  if (!result.success) {
+    setError('ERROR');
+    setPassword('');
+  }
+};  // <-- ADD THIS CLOSING BRACE AND SEMICOLON
 
-  return (
+return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-[#1a1625] via-[#2d1b3d] to-[#1a1625]">
       <div className="w-full max-w-md">
         {/* Logo */}
