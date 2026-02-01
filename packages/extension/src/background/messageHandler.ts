@@ -535,13 +535,25 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               const solData = await solResponse.json();
               console.log('Helius response:', solData);
 
-              if (solData.result?.items) {
+                if (solData.result?.items) {
+                console.log('Total NFTs from Helius:', solData.result.items.length);
+                
+                // Log compression status for each NFT
+                solData.result.items.forEach((nft: any, index: number) => {
+                  console.log(`NFT ${index + 1}:`, {
+                    name: nft.content?.metadata?.name || nft.id.slice(0, 8),
+                    interface: nft.interface,
+                    compressed: nft.compression?.compressed,
+                    compression: nft.compression,
+                  });
+                });
+                
                 const solNfts = solData.result.items
                   .filter((nft: any) => {
                     // Filter out compressed NFTs for now (they need special handling)
-                    const isCompressed = nft.compression?.compressed;
+                    const isCompressed = nft.compression?.compressed === true;
                     if (isCompressed) {
-                      console.log('⚠️ Skipping compressed NFT:', nft.content?.metadata?.name || nft.id);
+                      console.log('⚠️ Filtering out compressed NFT:', nft.content?.metadata?.name || nft.id);
                     }
                     return !isCompressed;
                   })
@@ -592,7 +604,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                   raw: nft,
                 }));
                 allNfts.push(...solNfts);
-                console.log('Found', solNfts.length, 'Solana NFTs (after filtering compressed)');
+                console.log('NFTs after filtering:', solNfts.length);
+                console.log('Filtered NFTs:', solNfts.map(n => n.metadata.name));
               }
               
             } catch (solError) {
