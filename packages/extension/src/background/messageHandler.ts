@@ -357,6 +357,39 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true };
       }
 
+      case 'CHANGE_PASSWORD': {
+        const { currentPassword, newPassword } = validatedMessage.data;
+        const state = engine.getState();
+        
+        if (!state.isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+
+        if (!state.vaultData) {
+          throw new Error('No vault data found');
+        }
+
+        try {
+          // Verify current password by trying to unlock
+          const vault = engine.getVault();
+          const content = await vault.unlock(state.vaultData, currentPassword);
+          
+          // Create new vault with same mnemonic but new password
+          const newVaultData = await vault.create(newPassword, content.mnemonic);
+          
+          // Update state with new vault data
+          await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_DATA]: newVaultData });
+          
+          // Re-unlock with new password
+          await engine.unlockWallet(newVaultData, newPassword);
+          
+          console.log('✅ Password changed successfully');
+          return { success: true, data: { message: 'Password changed successfully' } };
+        } catch (error) {
+          throw new Error('Current password is incorrect');
+        }
+      }
+
       case 'WALLET_LOCK': {
         engine.lockWallet();
         const state = engine.getState();
