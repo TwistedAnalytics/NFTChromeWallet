@@ -49,6 +49,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     // Reset activity timer on any message (user interaction)
     if (engine.getState().isUnlocked) {
       engine.resetActivity();
+    // Also update Chrome storage for persistent tracking
+    await chrome.storage.local.set({ lastActivityTime: Date.now() });
+    }
+    
+    // Reset activity timer on any message (user interaction)
+    if (engine.getState().isUnlocked) {
+      engine.resetActivity();
     }
 
     switch (validatedMessage.type) {
@@ -124,6 +131,16 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     throw new Error('No vault data found');
   }
   await engine.unlockWallet(vaultData, data.password);
+
+  // Restore saved auto-lock time
+  const autoLockMinutes = result.autoLockMinutes || 5;
+  engine.setAutoLockTime(autoLockMinutes);
+  
+  // Set initial activity time for alarm-based auto-lock
+  await chrome.storage.local.set({ 
+    lastActivityTime: Date.now(),
+    autoLockMinutes: autoLockMinutes
+  });
   
   // Restore saved auto-lock time and set initial activity time
   const autoLockMinutes = result.autoLockMinutes || 5;
