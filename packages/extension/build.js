@@ -83,19 +83,18 @@ const buildOptions = {
   logLevel: 'info',
 };
 
+// Buffer polyfill banner for background script
+const bufferPolyfill = {
+  js: `import { Buffer } from 'buffer'; globalThis.Buffer = Buffer;`
+};
+
 if (watch) {
   // Watch mode using context
   const ctxBackground = await esbuild.context({
     ...buildOptions,
     entryPoints: ['src/background/index.ts'],
     outfile: 'dist/background.js',
-    banner: {
-      js: `
-        // Polyfill Buffer for service worker
-        import { Buffer } from 'buffer';
-        globalThis.Buffer = Buffer;
-      `,
-    },
+    banner: bufferPolyfill,
   });
 
   const ctxContent = await esbuild.context({
@@ -119,20 +118,13 @@ if (watch) {
   console.log('✅ Extension built successfully!');
   console.log('👀 Watching for changes...');
 } else {
-
   // Production build
   await Promise.all([
     esbuild.build({
       ...buildOptions,
       entryPoints: ['src/background/index.ts'],
       outfile: 'dist/background.js',
-      banner: {
-        js: `
-          // Polyfill Buffer for service worker
-          import { Buffer } from 'buffer';
-          globalThis.Buffer = Buffer;
-        `,
-      },
+      banner: bufferPolyfill,
     }),
     esbuild.build({
       ...buildOptions,
@@ -148,8 +140,6 @@ if (watch) {
 
   console.log('✅ Extension built successfully!');
 }
-
-console.log('✅ Extension built successfully!');
 
 if (watch) {
   console.log('👀 Watching for changes...');
