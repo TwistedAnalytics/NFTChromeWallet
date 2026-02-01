@@ -17,13 +17,31 @@ const AppContent: React.FC = () => {
   const { state } = useNavigation();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
     const checkWallet = async () => {
       try {
+        // Check if vault exists
         const result = await chrome.storage.local.get(['vaultData']);
         const hasVault = !!result.vaultData;
-        console.log('Has vault:', hasVault, 'isUnlocked:', isUnlocked);
+        console.log('Has vault:', hasVault);
         setHasWallet(hasVault);
+
+        // If vault exists, check if it's unlocked in the background
+        if (hasVault) {
+          const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+          console.log('Background status:', statusResponse);
+          
+          if (statusResponse.success && statusResponse.data?.isUnlocked) {
+            // Sync UI state with background state
+            store.setUnlocked(true);
+            store.setAddress(statusResponse.data.address);
+            store.setEthAddress(statusResponse.data.ethAddress);
+            console.log('✅ Wallet is unlocked in background, syncing UI state');
+          } else {
+            console.log('⚠️ Wallet is locked in background');
+            store.setUnlocked(false);
+          }
+        }
       } catch (error) {
         console.error('Error checking wallet:', error);
         setHasWallet(false);
@@ -33,7 +51,7 @@ const AppContent: React.FC = () => {
     if (!isLoading) {
       checkWallet();
     }
-  }, [isLoading, isUnlocked]);
+  }, [isLoading]);
 
     // Auto-initialize balances when wallet is unlocked
   useEffect(() => {
