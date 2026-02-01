@@ -84,14 +84,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
       
-      case 'SET_AUTO_LOCK_TIME': {
-        const { minutes } = validatedMessage.data;
-        engine.setAutoLockTime(minutes);
-        const state = engine.getState();
-        await saveWalletState(state);
-        return { success: true };
-      }
-
       case 'RESET_ACTIVITY': {
       engine.resetActivity();
       return { success: true };
@@ -143,12 +135,10 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
   });
   
   // Restore saved auto-lock time and set initial activity time
-  const autoLockMinutes = result.autoLockMinutes || 5;
   engine.setAutoLockTime(autoLockMinutes);
   await chrome.storage.local.set({ 
     lastActivityTime: Date.now(),
     autoLockEnabled: true,
-    autoLockMinutes: autoLockMinutes
   });
   
   const state = engine.getState();
@@ -349,12 +339,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       const { chain } = validatedMessage.data;
       const privateKey = engine.getPrivateKey(chain, 0);
       return { success: true, data: { privateKey } };
-      }
-
-      case 'SET_AUTO_LOCK_TIME': {
-        const { minutes } = validatedMessage.data;
-        engine.setAutoLockTime(minutes);
-        return { success: true };
       }
 
       case 'WALLET_LOCK': {
