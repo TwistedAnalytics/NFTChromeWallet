@@ -702,23 +702,45 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               to: toAddress
             });
             
-            // Get associated token accounts
+            // Detect which token program this NFT uses by checking the mint account
+            const mintInfo = await connection.getAccountInfo(mintAddress);
+            if (!mintInfo) {
+              throw new Error('Could not find NFT mint account');
+            }
+            
+            // Token-2022 uses a different program ID
+            const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
+            
+            // Check which program owns this mint
+            const isToken2022 = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
+            const tokenProgramId = isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+            
+            console.log('Token Program:', isToken2022 ? 'Token-2022' : 'Legacy Token Program');
+            console.log('Program ID:', tokenProgramId.toString());
+            
+            // Get associated token accounts with the correct program
             const fromATA = await getAssociatedTokenAddress(
               mintAddress,
               fromKeypair.publicKey,
               false,
-              TOKEN_PROGRAM_ID
+              tokenProgramId
             );
             
             const toATA = await getAssociatedTokenAddress(
               mintAddress,
               toPublicKey,
               false,
-              TOKEN_PROGRAM_ID
+              tokenProgramId
             );
             
             console.log('From ATA:', fromATA.toString());
             console.log('To ATA:', toATA.toString());
+            
+            // Check if source account has the NFT
+            const fromTokenAccount = await connection.getAccountInfo(fromATA);
+            if (!fromTokenAccount) {
+              throw new Error('You do not own this NFT or it is not in your token account');
+            }
             
             // Check if destination token account exists
             const toAccountInfo = await connection.getAccountInfo(toATA);
@@ -735,7 +757,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                   toATA,
                   toPublicKey,
                   mintAddress,
-                  TOKEN_PROGRAM_ID
+                  tokenProgramId
                 )
               );
             }
@@ -749,13 +771,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 fromKeypair.publicKey,
                 1, // NFT amount is always 1
                 [],
-                TOKEN_PROGRAM_ID
+                tokenProgramId
               )
             );
             
             // Get recent blockhash
             console.log('Getting recent blockhash...');
-            const { blockhash } = await connection.getLatestBlockhash();
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = fromKeypair.publicKey;
             
@@ -768,15 +790,23 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               transaction.serialize(),
               {
                 skipPreflight: false,
-                preflightCommitment: 'confirmed'
+                preflightCommitment: 'confirmed',
+                maxRetries: 3
               }
             );
             
             console.log('✅ Solana NFT sent! Signature:', signature);
             
-            // Wait for confirmation
+            // Wait for confirmation with timeout
             console.log('Waiting for confirmation...');
-            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+            const confirmation = await connection.confirmTransaction(
+              {
+                signature,
+                blockhash,
+                lastValidBlockHeight
+              },
+              'confirmed'
+            );
             
             if (confirmation.value.err) {
               throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
