@@ -45,6 +45,25 @@ const AppContent: React.FC = () => {
     }
   }, [isUnlocked, address]);
 
+  // Reset activity timer on user interaction
+  useEffect(() => {
+    if (!isUnlocked) return;
+
+    const resetActivity = () => {
+      chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
+    };
+
+    window.addEventListener('click', resetActivity);
+    window.addEventListener('keydown', resetActivity);
+    window.addEventListener('scroll', resetActivity);
+
+    return () => {
+      window.removeEventListener('click', resetActivity);
+      window.removeEventListener('keydown', resetActivity);
+      window.removeEventListener('scroll', resetActivity);
+      };
+    }, [isUnlocked]);
+
   if (isLoading || hasWallet === null) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
