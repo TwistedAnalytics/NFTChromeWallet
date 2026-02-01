@@ -117,6 +117,9 @@ importers:
       esbuild:
         specifier: ^0.19.0
         version: 0.19.12
+      ethers:
+        specifier: ^6.16.0
+        version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     devDependencies:
       typescript:
         specifier: ^5.3.0
