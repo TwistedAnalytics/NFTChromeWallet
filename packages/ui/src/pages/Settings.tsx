@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useNavigation } from '../contexts/NavigationContext';
+import React, { useState, useEffect } from 'react';
 
 export const Settings: React.FC = () => {
   const { lockWallet } = useWallet();
@@ -20,22 +21,24 @@ const [confirmPassword, setConfirmPassword] = useState('');
 
 const handleAutoLockChange = async (minutes: number) => {
   try {
-    await chrome.runtime.sendMessage({ 
+    const response = await chrome.runtime.sendMessage({ 
       type: 'SET_AUTO_LOCK_TIME',
       data: { minutes }
     });
+    
     if (response.success) {
       setAutoLockMinutes(minutes);
-
-    // Also save to chrome storage so it persists
-    await chrome.storage.local.set({ autoLockMinutes: minutes });
+      
+      // Also save to chrome storage so it persists
+      await chrome.storage.local.set({ autoLockMinutes: minutes });
       
       alert(`Auto-lock set to ${minutes} minutes`);
+    }
   } catch (error) {
     console.error('Error setting auto-lock:', error);
   }
 };
-
+  
 useEffect(() => {
   // Load saved auto-lock setting
   chrome.storage.local.get(['autoLockMinutes']).then((result) => {
