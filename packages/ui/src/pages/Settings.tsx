@@ -24,12 +24,26 @@ const handleAutoLockChange = async (minutes: number) => {
       type: 'SET_AUTO_LOCK_TIME',
       data: { minutes }
     });
-    setAutoLockMinutes(minutes);
-    alert(`Auto-lock set to ${minutes} minutes`);
+    if (response.success) {
+      setAutoLockMinutes(minutes);
+
+    // Also save to chrome storage so it persists
+    await chrome.storage.local.set({ autoLockMinutes: minutes });
+      
+      alert(`Auto-lock set to ${minutes} minutes`);
   } catch (error) {
     console.error('Error setting auto-lock:', error);
   }
 };
+
+useEffect(() => {
+  // Load saved auto-lock setting
+  chrome.storage.local.get(['autoLockMinutes']).then((result) => {
+    if (result.autoLockMinutes) {
+      setAutoLockMinutes(result.autoLockMinutes);
+    }
+  });
+}, []);
 
 const handleChangePassword = async () => {
   if (newPassword !== confirmPassword) {
