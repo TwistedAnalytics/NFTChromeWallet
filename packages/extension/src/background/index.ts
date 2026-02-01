@@ -53,16 +53,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Set up auto-lock alarm
+// Set up auto-lock alarm - check every minute
 chrome.alarms.create('autoLock', {
   periodInMinutes: 1,
 });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'autoLock') {
-    // Check if wallet should be locked
-    // This will be handled by the wallet engine's internal timer
+    // Check if wallet should be locked due to inactivity
+    const result = await chrome.storage.local.get(['lastActivityTime', 'autoLockMinutes', 'autoLockEnabled', 'walletState']);
+    
+    if (result.autoLockEnabled && result.walletState?.isUnlocked && result.lastActivityTime) {
+      const autoLockMinutes = result.autoLockMinutes || 5;
+      const inactiveTime = Date.now() - result.lastActivityTime;
+      const lockThreshold = autoLockMinutes * 60 * 1000;
+      
+      if (inactiveTime >= lockThreshold) {
+        console.log(`Auto-locking wallet after ${autoLockMinutes} minutes of inactivity`);
+        
+        // Send lock message
+        handleMessage({ type: 'WALLET_LOCK' }, {})
+          .then(() => console.log('Wallet auto-locked'))
+          .catch(err => console.error('Auto-lock failed:', err));
+      }
+    }
+  }
+  
+  if (alarm.name === 'keepAlive') {
+    console.log('Service worker kept alive');
   }
 });
-
-console.log('VaultNFT background service worker ready');
