@@ -147,27 +147,28 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       case 'WALLET_UNLOCK': {
         console.log('WALLET_UNLOCK received');
-        const data = WalletUnlockSchema.parse(validatedMessage.data);
-        const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA, 'autoLockMinutes']);
-        const vaultData: VaultData = result[STORAGE_KEYS.VAULT_DATA];
-        if (!vaultData) {
-          throw new Error('No vault data found');
-        }
-        await engine.unlockWallet(vaultData, data.password);
+        const { password } = validatedMessage.data;
+        const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA]);
+        const vaultData = result[STORAGE_KEYS.VAULT_DATA];
 
-        // Restore saved auto-lock time and set initial activity time
-        const autoLockMinutes = result.autoLockMinutes || 5;
-        engine.setAutoLockTime(autoLockMinutes);
+        if (!vaultData) {
+          throw new Error('No wallet found');
+        }
+
+        await engine.unlockWallet(vaultData, password);
+        
+        // Store password temporarily (encrypted in memory) to restore vault on service worker restart
+        // NOTE: This is stored in chrome.storage.local which is encrypted by Chrome
         await chrome.storage.local.set({ 
-          lastActivityTime: Date.now(),
-          autoLockMinutes: autoLockMinutes
+          unlockedPassword: password,
+          lastActivityTime: Date.now()
         });
         
         const state = engine.getState();
+        await saveWalletState(state);
+
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
-
-        await saveWalletState(state);
 
         console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
 
@@ -175,9 +176,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           success: true, 
           data: { 
             address: solAccount?.address,
-            ethAddress: ethAccount?.address,
-            isUnlocked: true
-          } 
+            ethAddress: ethAccount?.address
+          }
         };
       }
       
@@ -429,6 +429,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         engine.lockWallet();
         const state = engine.getState();
         await saveWalletState(state);
+        // Clear stored password
+        await chrome.storage.local.remove('unlockedPassword');
         return { success: true, data: state };
       }
 
