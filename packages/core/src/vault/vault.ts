@@ -145,7 +145,7 @@ export class Vault {
     return account.privateKey;
   }
 
-  /**
+   /**
    * Sign message
    */
   async signMessage(message: string, chain: 'ethereum' | 'solana', accountIndex: number = 0): Promise<string> {
@@ -158,21 +158,37 @@ export class Vault {
       throw new Error('Account not found');
     }
 
-    const messageBytes = new TextEncoder().encode(message);
     const privateKeyBytes = this.hexToBytes(account.privateKey);
     
     if (chain === 'solana') {
+      // For Solana, message comes in as base64, decode it first
+      let messageBytes: Uint8Array;
+      try {
+        // Try to decode from base64
+        const binaryString = atob(message);
+        messageBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          messageBytes[i] = binaryString.charCodeAt(i);
+        }
+      } catch {
+        // If not base64, treat as plain text
+        messageBytes = new TextEncoder().encode(message);
+      }
+      
       // Solana uses Ed25519
       const signature = ed25519.sign(messageBytes, privateKeyBytes);
-      return this.bytesToHex(signature);
+      
+      // Return as base64 for Solana
+      return btoa(String.fromCharCode(...signature));
     } else {
       // Ethereum uses secp256k1
+      const messageBytes = new TextEncoder().encode(message);
       const messageHash = sha256(messageBytes);
       const signature = secp256k1.sign(messageHash, privateKeyBytes);
       return signature.toCompactHex();
     }
   }
-
+  
   /**
    * Sign transaction
    */
