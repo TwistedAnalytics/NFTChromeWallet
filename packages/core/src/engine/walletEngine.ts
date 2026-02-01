@@ -32,6 +32,21 @@ export class WalletEngine {
   }
 
   /**
+   * Reset auto-lock timer (private helper)
+   */
+  private resetAutoLockTimer(): void {
+    if (this.autoLockTimer) {
+      clearTimeout(this.autoLockTimer);
+    }
+    
+    if (this.state.isUnlocked) {
+      this.autoLockTimer = setTimeout(() => {
+        this.lockWallet();
+      }, this.autoLockMinutes * 60 * 1000);
+    }
+  }
+
+  /**
    * Reset activity timer (call on any user interaction)
    */
   resetActivity(): void {
