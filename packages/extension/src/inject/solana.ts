@@ -100,6 +100,32 @@ export class SolanaProvider {
     throw error;
   }
 }
+
+  async disconnect(): Promise<void> {
+    console.log('🔵 VaultNFT: disconnect() called');
+    this.publicKey = null;
+    this.connected = false;
+    this.emit('disconnect');
+  }
+
+  async signMessage(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array }> {
+    console.log('🔵 VaultNFT: signMessage() called');
+    
+    if (!this.publicKey) {
+      throw new Error('Wallet not connected');
+    }
+
+    const messageStr = Buffer.from(message).toString('base64');
+    const signature = await this.sendMessage('SIGN_MESSAGE', {
+      message: messageStr,
+      chain: 'solana',
+      address: this.publicKey.toString(),
+    });
+
+    return {
+      signature: Buffer.from(signature, 'base64'),
+    };
+  }
   
   async signTransaction(transaction: any): Promise<any> {
     if (!this.publicKey) {
