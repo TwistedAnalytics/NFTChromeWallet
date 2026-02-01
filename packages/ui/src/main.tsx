@@ -35,17 +35,21 @@ const AppContent: React.FC = () => {
     }
   }, [isLoading, isUnlocked]);
 
-  // Auto-initialize balances when wallet is unlocked
+    // Auto-initialize balances when wallet is unlocked
   useEffect(() => {
     if (isUnlocked && address) {
       console.log('Wallet is unlocked, fetching balances...');
+      
+      // Reset activity on popup open
+      chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
+      
       chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
         console.log('Auto-fetch balance response:', response);
       });
     }
   }, [isUnlocked, address]);
 
-  // Reset activity timer on user interaction
+  // Reset activity timer on user interaction IN THE POPUP
   useEffect(() => {
     if (!isUnlocked) return;
 
@@ -53,16 +57,14 @@ const AppContent: React.FC = () => {
       chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
     };
 
-    window.addEventListener('click', resetActivity);
-    window.addEventListener('keydown', resetActivity);
-    window.addEventListener('scroll', resetActivity);
+    // Only track interactions while popup is open
+    const events = ['click', 'keydown', 'scroll', 'mousemove'];
+    events.forEach(event => window.addEventListener(event, resetActivity));
 
     return () => {
-      window.removeEventListener('click', resetActivity);
-      window.removeEventListener('keydown', resetActivity);
-      window.removeEventListener('scroll', resetActivity);
-      };
-    }, [isUnlocked]);
+      events.forEach(event => window.removeEventListener(event, resetActivity));
+    };
+  }, [isUnlocked]);
 
   if (isLoading || hasWallet === null) {
     return (
