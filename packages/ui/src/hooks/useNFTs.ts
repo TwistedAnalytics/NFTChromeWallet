@@ -52,13 +52,18 @@ export const useNFTs = () => {
     }
   }, [isUnlocked, send, setNFTs]);
 
-  const sendNFT = useCallback(async (tokenAddress: string, tokenId: string, toAddress: string) => {
+  const sendNFT = useCallback(async (nft: NFT, toAddress: string) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await send({
         type: 'SEND_NFT',
-        data: { tokenAddress, tokenId, toAddress },
+        data: { 
+          nft,
+          tokenAddress: nft.contract?.address || nft.mint || nft.id,
+          tokenId: nft.tokenId,
+          toAddress 
+        },
       });
       
       if (response.success) {
@@ -78,7 +83,7 @@ export const useNFTs = () => {
       setIsLoading(false);
     }
   }, [send, fetchNFTs]);
-
+  
   useEffect(() => {
     if (isUnlocked) {
       fetchNFTs(); // Will use cache if available
