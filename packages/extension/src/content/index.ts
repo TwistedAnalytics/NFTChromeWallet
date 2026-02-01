@@ -56,3 +56,46 @@ window.addEventListener('message', async (event) => {
 });
 
 console.log('VaultNFT content script ready');
+
+window.addEventListener('message', async (event) => {
+  if (event.source !== window) return;
+
+  const message = event.data;
+
+  if (message && message.target === 'vaultNFT-background') {
+    console.log('📨 Content: Message to background:', message.type, message.data);
+    
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: message.type,
+        data: message.data,
+        requestId: message.requestId,
+      });
+
+      console.log('📨 Content: Response from background:', response);
+
+      window.postMessage(
+        {
+          target: 'vaultNFT-page',
+          requestId: message.requestId,
+          response,
+        },
+        '*'
+      );
+    } catch (error: any) {
+      console.error('📨 Content: Error:', error);
+      
+      window.postMessage(
+        {
+          target: 'vaultNFT-page',
+          requestId: message.requestId,
+          response: {
+            success: false,
+            error: error.message || 'Unknown error',
+          },
+        },
+        '*'
+      );
+    }
+  }
+});
