@@ -1,12 +1,12 @@
-/**
- * Solana Provider (MWA-aligned interface)
- */
 export class SolanaProvider {
-  private requestId = 0;
-  private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
   public isVaultNFT = true;
-  public isPhantom = true; // Phantom compatibility for Magic Eden
-  public publicKey: any = null;
+  public isPhantom = false; // Set to true for better compatibility
+  public publicKey: PublicKey | null = null;
+  private connected = false;
+
+  constructor() {
+    console.log('SolanaProvider constructed');
+  }
 
   constructor() {
     this.setupMessageListener();
