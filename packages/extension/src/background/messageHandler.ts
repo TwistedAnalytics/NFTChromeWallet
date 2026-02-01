@@ -20,22 +20,30 @@ const STORAGE_KEYS = {
 async function getWalletEngine(): Promise<WalletEngine> {
   if (!walletEngine) {
     // Load state from storage
-    const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE, STORAGE_KEYS.VAULT_DATA]);
+    const result = await chrome.storage.local.get([STORAGE_KEYS.WALLET_STATE, STORAGE_KEYS.VAULT_DATA, 'lastActivityTime', 'autoLockMinutes']);
     const state = result[STORAGE_KEYS.WALLET_STATE];
     
     walletEngine = new WalletEngine(state);
     
-    // If wallet was unlocked, we need to check if it should still be unlocked
-    if (state?.isUnlocked) {
-      console.log('⚠️ Wallet state says unlocked, but vault needs to be re-unlocked after service worker restart');
-      // Mark as locked since vault is not actually unlocked
-      walletEngine.lockWallet();
-      await saveWalletState(walletEngine.getState());
+    // Check if wallet should still be unlocked based on activity
+    if (state?.isUnlocked && result.lastActivityTime) {
+      const autoLockMinutes = result.autoLockMinutes || 5;
+      const inactiveTime = Date.now() - result.lastActivityTime;
+      const lockThreshold = autoLockMinutes * 60 * 1000;
+      
+      if (inactiveTime >= lockThreshold) {
+        console.log('🔒 Locking wallet due to inactivity on service worker restart');
+        walletEngine.lockWallet();
+        await saveWalletState(walletEngine.getState());
+      } else {
+        console.log('✅ Wallet still within auto-lock window, keeping unlocked state');
+        // Wallet state is already set from storage, just update activity
+        await chrome.storage.local.set({ lastActivityTime: Date.now() });
+      }
     }
   }
   return walletEngine;
 }
-
 /**
  * Save wallet state to storage
  */
