@@ -623,10 +623,44 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: permissions };
       }
 
-      case 'SIGN_MESSAGE': {
+            case 'SIGN_MESSAGE': {
         const { message: msg, chain, address } = validatedMessage.data;
-        const signature = await engine.signMessage(msg, chain, address);
-        return { success: true, data: signature };
+        
+        // Show approval popup for signing
+        const origin = sender.origin || sender.url || 'unknown';
+        
+        return new Promise((resolve) => {
+          chrome.windows.create({
+            url: `approval.html?type=sign&message=${encodeURIComponent(msg)}&chain=${chain}&origin=${encodeURIComponent(origin)}`,
+            type: 'popup',
+            width: 400,
+            height: 600,
+          }, (window) => {
+            // Listen for approval response
+            const listener = (message: any, messageSender: any, sendResponse: any) => {
+              if (message.type === 'SIGN_APPROVED') {
+                chrome.runtime.onMessage.removeListener(listener);
+                
+                // Sign the message
+                engine.signMessage(msg, chain, address)
+                  .then(signature => {
+                    resolve({ success: true, data: signature });
+                    if (window?.id) chrome.windows.remove(window.id);
+                  })
+                  .catch(error => {
+                    resolve({ success: false, error: error.message });
+                    if (window?.id) chrome.windows.remove(window.id);
+                  });
+              } else if (message.type === 'SIGN_REJECTED') {
+                chrome.runtime.onMessage.removeListener(listener);
+                resolve({ success: false, error: 'User rejected signature' });
+                if (window?.id) chrome.windows.remove(window.id);
+              }
+            };
+            
+            chrome.runtime.onMessage.addListener(listener);
+          });
+        });
       }
 
       case 'SIGN_TRANSACTION': {
