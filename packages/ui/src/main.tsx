@@ -118,6 +118,8 @@ const AppContent: React.FC = () => {
         return <Home />;
       case 'gallery':
         return <Gallery />;
+       case 'history':
+        return <History />;
       case 'nft-detail':
         return state.data?.nft ? <NFTView nft={state.data.nft} /> : <Gallery />;
       case 'send':
