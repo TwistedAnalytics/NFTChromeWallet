@@ -21,6 +21,7 @@ export class SolanaProvider {
   private connected = false;
   private requestId = 0;
   private pendingRequests = new Map<string, any>();
+  private _events: { [key: string]: Function[] } = {};
 
   constructor() {
     console.log('SolanaProvider constructed');
@@ -70,23 +71,25 @@ export class SolanaProvider {
     });
   }
 
-  async connect(): Promise<{ publicKey: any }> {
+  async connect(): Promise<{ publicKey: PublicKey }> {
     const account = await this.sendMessage('PERMISSION_REQUEST', {
       chain: 'solana',
       requestedPermissions: ['connect'],
     });
 
-    if (account) {
+    if (account && account.address) {
       this.publicKey = new PublicKey(account.address);
       this.connected = true;
+      this.emit('connect', this.publicKey);
     }
 
-    return { publicKey: this.publicKey };
+    return { publicKey: this.publicKey! };
   }
 
   async disconnect(): Promise<void> {
     this.publicKey = null;
     this.connected = false;
+    this.emit('disconnect');
   }
 
   async signMessage(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array }> {
@@ -136,6 +139,20 @@ export class SolanaProvider {
     return { signature: result };
   }
 
-  on(event: string, handler: Function): void {}
-  off(event: string, handler: Function): void {}
+  on(event: string, handler: Function): void {
+    if (!this._events[event]) {
+      this._events[event] = [];
+    }
+    this._events[event].push(handler);
+  }
+
+  off(event: string, handler: Function): void {
+    if (!this._events[event]) return;
+    this._events[event] = this._events[event].filter(h => h !== handler);
+  }
+
+  private emit(event: string, ...args: any[]): void {
+    if (!this._events[event]) return;
+    this._events[event].forEach(handler => handler(...args));
+  }
 }
