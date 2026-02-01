@@ -669,7 +669,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         // Check if permission already granted
         const hasPermission = await checkPermission(origin, chain);
         if (hasPermission) {
-          console.log('🟢 Background: Permission already granted');
+          console.log('🟢 Background: Permission already granted for', origin, chain);
           return { 
             success: true, 
             data: {
@@ -679,12 +679,24 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           };
         }
         
-        // Show approval popup
+        // Show approval popup - use chrome.windows.create with correct path
         console.log('🟢 Background: Showing approval popup for origin:', origin);
         
         return new Promise((resolve, reject) => {
+          // Store the pending request
+          const requestId = `connect_${Date.now()}`;
+          chrome.storage.local.set({
+            [requestId]: {
+              type: 'connect',
+              origin,
+              chain,
+              address: account.address,
+              timestamp: Date.now()
+            }
+          });
+          
           chrome.windows.create({
-            url: `popup.html?type=connect&origin=${encodeURIComponent(origin)}&chain=${chain}&address=${account.address}`,
+            url: chrome.runtime.getURL(`index.html#connect?requestId=${requestId}`),
             type: 'popup',
             width: 360,
             height: 600,
@@ -694,16 +706,22 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               return;
             }
             
-            // Store approval callback
+            console.log('🟢 Popup created with ID:', window.id);
+            
+            // Poll for approval result
             const checkApproval = setInterval(async () => {
-              const result = await chrome.storage.local.get([`approval_${window.id}`]);
-              const approval = result[`approval_${window.id}`];
+              const result = await chrome.storage.local.get([`${requestId}_result`]);
+              const approval = result[`${requestId}_result`];
               
               if (approval) {
                 clearInterval(checkApproval);
-                await chrome.storage.local.remove(`approval_${window.id}`);
+                
+                // Clean up
+                await chrome.storage.local.remove([requestId, `${requestId}_result`]);
                 
                 if (approval.approved) {
+                  console.log('🟢 User approved connection');
+                  
                   // Grant permission
                   await requestPermission({ 
                     ...validatedMessage.data, 
@@ -719,15 +737,30 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                     }
                   });
                 } else {
+                  console.log('🔴 User rejected connection');
                   reject(new Error('User rejected the request'));
                 }
               }
             }, 100);
             
+            // Check if window is closed
+            const checkWindow = setInterval(() => {
+              chrome.windows.get(window.id!, (w) => {
+                if (chrome.runtime.lastError || !w) {
+                  clearInterval(checkWindow);
+                  clearInterval(checkApproval);
+                  chrome.storage.local.remove([requestId, `${requestId}_result`]);
+                  reject(new Error('User closed the popup'));
+                }
+              });
+            }, 500);
+            
             // Timeout after 2 minutes
             setTimeout(() => {
               clearInterval(checkApproval);
+              clearInterval(checkWindow);
               chrome.windows.remove(window.id!).catch(() => {});
+              chrome.storage.local.remove([requestId, `${requestId}_result`]);
               reject(new Error('Request timeout'));
             }, 120000);
           });
