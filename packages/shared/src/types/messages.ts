@@ -23,6 +23,17 @@ export type MessageType =
   // Settings
   | 'SETTINGS_UPDATE'
   | 'SETTINGS_GET'
+  | 'SET_AUTO_LOCK_TIME'
+  | 'RESET_ACTIVITY'            
+  | 'GET_MNEMONIC'              
+  | 'GET_PRIVATE_KEY'           
+  | 'GET_STATUS'                
+  | 'GET_CONNECTED_SITES'       
+  | 'GET_NFTS'                  
+  | 'DISCONNECT_SITE'           
+  | 'APPROVE_CONNECTION'        
+  | 'SIGN_APPROVED'             
+  | 'SIGN_REJECTED'             
   // Permissions
   | 'PERMISSION_REQUEST'
   | 'PERMISSION_CHECK'
