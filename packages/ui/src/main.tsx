@@ -16,35 +16,27 @@ const AppContent: React.FC = () => {
   const { isUnlocked, address, isLoading, createWallet, unlockWallet } = useWallet();
   const { state } = useNavigation();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
+  const store = useWallet();
 
-      useEffect(() => {
+  useEffect(() => {
     const checkWallet = async () => {
       try {
-        const result = await chrome.storage.local.get(['vaultData', 'walletState']);
+        const result = await chrome.storage.local.get(['vaultData']);
         const hasVault = !!result.vaultData;
-        console.log('Vault check:', { 
-          hasVault, 
-          vaultData: result.vaultData,
-          walletState: result.walletState 
-        });
-        
+        console.log('Has vault:', hasVault);
         setHasWallet(hasVault);
 
-        // If vault exists, check background state
+        // If vault exists, check if background says it's unlocked
         if (hasVault) {
           const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
           console.log('Background status:', statusResponse);
           
-          if (statusResponse.success && statusResponse.data) {
-            const isUnlocked = statusResponse.data.isUnlocked;
-            console.log('Is unlocked in background?', isUnlocked);
-            
-            if (isUnlocked) {
-              // Sync UI with background
-              store.setUnlocked(true);
-              store.setAddress(statusResponse.data.address);
-              store.setEthAddress(statusResponse.data.ethAddress);
-            }
+          if (statusResponse.success && statusResponse.data?.isUnlocked) {
+            // Background says unlocked, sync UI
+            store.setUnlocked(true);
+            store.setAddress(statusResponse.data.address);
+            store.setEthAddress(statusResponse.data.ethAddress);
+            console.log('✅ Synced with background: wallet is unlocked');
           }
         }
       } catch (error) {
@@ -57,50 +49,6 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Auto-initialize balances when wallet is unlocked
-  useEffect(() => {
-    if (isUnlocked && address) {
-      console.log('Wallet is unlocked, fetching balances...');
-      
-      // Reset activity on popup open
-      chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
-    
-    useEffect(() => {
-    const checkWallet = async () => {
-      try {
-        // Check if vault exists
-        const result = await chrome.storage.local.get(['vaultData']);
-        const hasVault = !!result.vaultData;
-        console.log('Has vault:', hasVault);
-        setHasWallet(hasVault);
-
-        // If vault exists, check if it's unlocked in the background
-        if (hasVault) {
-          const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
-          console.log('Background status:', statusResponse);
-          
-          if (statusResponse.success && statusResponse.data?.isUnlocked) {
-            // Sync UI state with background state
-            store.setUnlocked(true);
-            store.setAddress(statusResponse.data.address);
-            store.setEthAddress(statusResponse.data.ethAddress);
-            console.log('✅ Wallet is unlocked in background, syncing UI state');
-          } else {
-            console.log('⚠️ Wallet is locked in background');
-            store.setUnlocked(false);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking wallet:', error);
-        setHasWallet(false);
-      }
-    };
-
-    if (!isLoading) {
-      checkWallet();
-    }
-  }, [isLoading]);
-
-    // Auto-initialize balances when wallet is unlocked
   useEffect(() => {
     if (isUnlocked && address) {
       console.log('Wallet is unlocked, fetching balances...');
@@ -122,7 +70,6 @@ const AppContent: React.FC = () => {
       chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
     };
 
-    // Only track interactions while popup is open
     const events = ['click', 'keydown', 'scroll', 'mousemove'];
     events.forEach(event => window.addEventListener(event, resetActivity));
 
