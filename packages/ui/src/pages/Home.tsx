@@ -35,7 +35,7 @@ export const Home: React.FC = () => {
         <div className="relative px-6 pt-4 pb-3">
           {/* Total Balance */}
           <div className="text-center mb-4">
-            <p className="text-gray-400 text-xs mb-1">Total Balance</p>
+            <p className="text-gray-400 text-xs mb-1">Crypto USD Value</p>
             <div className="flex items-center justify-center gap-2 mb-3">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 ${(parseFloat(balance) * 150 + parseFloat(ethBalance) * 2400).toFixed(2)}
@@ -71,7 +71,7 @@ export const Home: React.FC = () => {
       <div className="px-4 pb-3">
         {/* Section Header */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-white">Your Assets</h2>
+          <h2 className="text-base font-semibold text-white">Your Crypto Bag</h2>
           <button 
             onClick={() => navigate('settings')}
             className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
