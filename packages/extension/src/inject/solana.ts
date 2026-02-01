@@ -1,14 +1,29 @@
+class PublicKey {
+  constructor(public value: string) {}
+
+  toString(): string {
+    return this.value;
+  }
+
+  toBase58(): string {
+    return this.value;
+  }
+
+  toBytes(): Uint8Array {
+    return new Uint8Array();
+  }
+}
+
 export class SolanaProvider {
   public isVaultNFT = true;
-  public isPhantom = false; // Set to true for better compatibility
+  public isPhantom = true;
   public publicKey: PublicKey | null = null;
   private connected = false;
+  private requestId = 0;
+  private pendingRequests = new Map<string, any>();
 
   constructor() {
     console.log('SolanaProvider constructed');
-  }
-
-  constructor() {
     this.setupMessageListener();
   }
 
@@ -46,7 +61,6 @@ export class SolanaProvider {
         '*'
       );
 
-      // Timeout after 30 seconds
       setTimeout(() => {
         if (this.pendingRequests.has(requestId)) {
           this.pendingRequests.delete(requestId);
@@ -63,7 +77,8 @@ export class SolanaProvider {
     });
 
     if (account) {
-      this.publicKey = { toString: () => account.address };
+      this.publicKey = new PublicKey(account.address);
+      this.connected = true;
     }
 
     return { publicKey: this.publicKey };
@@ -71,6 +86,7 @@ export class SolanaProvider {
 
   async disconnect(): Promise<void> {
     this.publicKey = null;
+    this.connected = false;
   }
 
   async signMessage(message: Uint8Array, display?: string): Promise<{ signature: Uint8Array }> {
@@ -120,29 +136,6 @@ export class SolanaProvider {
     return { signature: result };
   }
 
-  // Event emitter compatibility
-  on(event: string, handler: Function): void {
-    // Simplified event emitter
-  }
-
-  off(event: string, handler: Function): void {
-    // Simplified event emitter
-  }
-}
-
-class PublicKey {
-  constructor(public value: string) {}
-
-  toString(): string {
-    return this.value;
-  }
-
-  toBase58(): string {
-    return this.value;
-  }
-
-  toBytes(): Uint8Array {
-    // Simple base58 decode - you may need a proper implementation
-    return new Uint8Array();
-  }
+  on(event: string, handler: Function): void {}
+  off(event: string, handler: Function): void {}
 }
