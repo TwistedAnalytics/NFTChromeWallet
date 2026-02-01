@@ -72,7 +72,10 @@ export const Home: React.FC = () => {
         {/* Section Header */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-white">Your Assets</h2>
-          <button className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
+          <button 
+            onClick={() => navigate('settings')}
+            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+          >
             Manage
           </button>
         </div>
