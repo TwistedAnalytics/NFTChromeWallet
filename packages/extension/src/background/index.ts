@@ -1,7 +1,5 @@
-// Polyfill Buffer for service worker environment
 import { Buffer } from 'buffer';
 (globalThis as any).Buffer = Buffer;
-
 import { handleMessage } from './messageHandler.js';
 import { startBalanceMonitoring } from './notificationHandler.js';
 
