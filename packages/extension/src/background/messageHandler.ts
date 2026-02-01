@@ -534,9 +534,18 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               
               const solData = await solResponse.json();
               console.log('Helius response:', solData);
-              
+
               if (solData.result?.items) {
-                const solNfts = solData.result.items.map((nft: any) => ({
+                const solNfts = solData.result.items
+                  .filter((nft: any) => {
+                    // Filter out compressed NFTs for now (they need special handling)
+                    const isCompressed = nft.compression?.compressed;
+                    if (isCompressed) {
+                      console.log('⚠️ Skipping compressed NFT:', nft.content?.metadata?.name || nft.id);
+                    }
+                    return !isCompressed;
+                  })
+                  .map((nft: any) => ({
                   // Core identifiers
                   id: nft.id,
                   chain: 'solana',
@@ -583,8 +592,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                   raw: nft,
                 }));
                 allNfts.push(...solNfts);
-                console.log('Found', solNfts.length, 'Solana NFTs');
+                console.log('Found', solNfts.length, 'Solana NFTs (after filtering compressed)');
               }
+              
             } catch (solError) {
               console.error('Solana NFT fetch error:', solError);
             }
@@ -669,6 +679,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
         
         try {
+            //new code
             if (chain === 'solana') {
             // Send Solana NFT
             const solAccount = engine.getCurrentAccount('solana');
@@ -686,7 +697,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             
             const fromKeypair = Keypair.fromSecretKey(secretKey);
             console.log('Keypair created:', fromKeypair.publicKey.toString());
-            console.log('Keypair matches account:', fromKeypair.publicKey.toString() === solAccount.address);
             
             // Connect to Solana
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
@@ -699,13 +709,31 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             console.log('📤 Sending Solana NFT:', {
               mint: mintAddress.toString(),
               from: solAccount.address,
-              to: toAddress
+              to: toAddress,
+              isCompressed: !!nft.compression?.compressed
             });
             
-            // Detect which token program this NFT uses by checking the mint account
+            // Check if this is a compressed NFT
+            if (nft.compression?.compressed || nft.raw?.compression?.compressed) {
+              console.log('⚠️ This is a compressed NFT (cNFT)');
+              console.log('Compression data:', nft.compression || nft.raw?.compression);
+              
+              // Compressed NFTs require special Metaplex Bubblegum instructions
+              // They don't use regular token accounts
+              throw new Error(
+                'Compressed NFT (cNFT) transfers are not yet supported. ' +
+                'Compressed NFTs use Metaplex Bubblegum and require different transfer logic. ' +
+                'This feature will be added soon!'
+              );
+            }
+            
+            // For regular SPL Token NFTs
+            console.log('📦 Regular SPL Token NFT');
+            
+            // Detect which token program this NFT uses
             const mintInfo = await connection.getAccountInfo(mintAddress);
             if (!mintInfo) {
-              throw new Error('Could not find NFT mint account');
+              throw new Error('Could not find NFT mint account. This might be a compressed NFT.');
             }
             
             // Token-2022 uses a different program ID
@@ -739,8 +767,22 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             // Check if source account has the NFT
             const fromTokenAccount = await connection.getAccountInfo(fromATA);
             if (!fromTokenAccount) {
-              throw new Error('You do not own this NFT or it is not in your token account');
+              console.error('❌ Source token account not found!');
+              console.log('NFT Data:', {
+                mint: nft.mint || nft.id,
+                ownership: nft.ownership,
+                interface: nft.raw?.interface,
+                compression: nft.compression || nft.raw?.compression
+              });
+              
+              throw new Error(
+                'Could not find your token account for this NFT. ' +
+                'This might be a compressed NFT or the NFT data is incorrect. ' +
+                'Please refresh your NFT list and try again.'
+              );
             }
+            
+            console.log('✅ Found source token account');
             
             // Check if destination token account exists
             const toAccountInfo = await connection.getAccountInfo(toATA);
@@ -821,7 +863,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 explorerUrl: `https://solscan.io/tx/${signature}`
               } 
             };
-            
+          
+            //end new
           } else {
             // Send Ethereum NFT
             const ethAccount = engine.getCurrentAccount('ethereum');
