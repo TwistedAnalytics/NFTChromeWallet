@@ -32,29 +32,28 @@ export class WalletEngine {
   }
 
   /**
-   * Reset auto-lock timer (private helper)
-   */
-  private resetAutoLockTimer(): void {
-    if (this.autoLockTimer) {
-      clearTimeout(this.autoLockTimer);
-    }
-    
-    if (this.state.isUnlocked) {
-      this.autoLockTimer = setTimeout(() => {
-        this.lockWallet();
-      }, this.autoLockMinutes * 60 * 1000);
-    }
+ * Reset auto-lock timer (private helper)
+ */
+private resetAutoLockTimer(): void {
+  // Store the unlock time for alarm checking
+  const unlockTime = Date.now();
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.set({ 
+      lastActivityTime: unlockTime,
+      autoLockEnabled: true 
+    });
   }
+}
 
-  /**
-   * Reset activity timer (call on any user interaction)
-   */
-  resetActivity(): void {
-    if (this.state.isUnlocked) {
-      this.resetAutoLockTimer();
-    }
+/**
+ * Reset activity timer (call on any user interaction)
+ */
+resetActivity(): void {
+  if (this.state.isUnlocked) {
+    this.resetAutoLockTimer();
   }
-
+}
+  
   /**
    * Create new wallet
    */
