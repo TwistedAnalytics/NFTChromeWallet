@@ -692,7 +692,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
         
         try {
-            //new code
+            //nft code 21
+
             if (chain === 'solana') {
             // Send Solana NFT
             const solAccount = engine.getCurrentAccount('solana');
@@ -715,38 +716,77 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
             const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, 'confirmed');
             
-            // Get mint address
-            const mintAddress = new PublicKey(nft.mint || nft.id);
+            // Get mint/asset address
+            const assetAddress = new PublicKey(nft.mint || nft.id);
             const toPublicKey = new PublicKey(toAddress);
             
+            const nftInterface = nft.raw?.interface || nft.interface || '';
+            
             console.log('📤 Sending Solana NFT:', {
-              mint: mintAddress.toString(),
+              asset: assetAddress.toString(),
+              interface: nftInterface,
               from: solAccount.address,
-              to: toAddress,
-              isCompressed: !!nft.compression?.compressed
+              to: toAddress
             });
             
             // Check if this is a compressed NFT
             if (nft.compression?.compressed || nft.raw?.compression?.compressed) {
-              console.log('⚠️ This is a compressed NFT (cNFT)');
-              console.log('Compression data:', nft.compression || nft.raw?.compression);
-              
-              // Compressed NFTs require special Metaplex Bubblegum instructions
-              // They don't use regular token accounts
               throw new Error(
-                'Compressed NFT (cNFT) transfers are not yet supported. ' +
-                'Compressed NFTs use Metaplex Bubblegum and require different transfer logic. ' +
-                'This feature will be added soon!'
+                'Compressed NFTs (cNFTs) are not yet supported. ' +
+                'These use Metaplex Bubblegum and require special transfer logic.'
               );
             }
             
-            // For regular SPL Token NFTs
+            // Handle Metaplex Core Assets
+            if (nftInterface === 'MplCoreAsset' || nftInterface.includes('MplCore')) {
+              console.log('📦 Metaplex Core Asset - using MPL Core transfer');
+              
+              try {
+                // Dynamic import for Metaplex Core
+                const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
+                const { createSignerFromKeypair, signerIdentity, publicKey: umiPublicKey } = await import('@metaplex-foundation/umi');
+                const { transferV1 } = await import('@metaplex-foundation/mpl-core');
+                
+                // Create Umi instance
+                const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
+                
+                // Create Umi keypair from secret key
+                const umiKeypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
+                const signer = createSignerFromKeypair(umi, umiKeypair);
+                umi.use(signerIdentity(signer));
+                
+                console.log('Umi signer:', signer.publicKey);
+                
+                // Build transfer instruction
+                const tx = await transferV1(umi, {
+                  asset: umiPublicKey(assetAddress.toString()),
+                  newOwner: umiPublicKey(toAddress),
+                  collection: undefined, // Optional - can be derived
+                }).sendAndConfirm(umi);
+                
+                const signature = Buffer.from(tx.signature).toString('base64');
+                console.log('✅ Metaplex Core NFT sent! Signature:', signature);
+                
+                return {
+                  success: true,
+                  data: {
+                    txHash: signature,
+                    explorerUrl: `https://solscan.io/tx/${signature}`
+                  }
+                };
+              } catch (error: any) {
+                console.error('❌ Metaplex Core transfer error:', error);
+                throw new Error(`Failed to transfer Metaplex Core Asset: ${error.message}`);
+              }
+            }
+            
+            // Handle regular SPL Token NFTs
             console.log('📦 Regular SPL Token NFT');
             
             // Detect which token program this NFT uses
-            const mintInfo = await connection.getAccountInfo(mintAddress);
+            const mintInfo = await connection.getAccountInfo(assetAddress);
             if (!mintInfo) {
-              throw new Error('Could not find NFT mint account. This might be a compressed NFT.');
+              throw new Error('Could not find NFT mint account.');
             }
             
             // Token-2022 uses a different program ID
@@ -757,18 +797,17 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             const tokenProgramId = isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
             
             console.log('Token Program:', isToken2022 ? 'Token-2022' : 'Legacy Token Program');
-            console.log('Program ID:', tokenProgramId.toString());
             
-            // Get associated token accounts with the correct program
+            // Get associated token accounts
             const fromATA = await getAssociatedTokenAddress(
-              mintAddress,
+              assetAddress,
               fromKeypair.publicKey,
               false,
               tokenProgramId
             );
             
             const toATA = await getAssociatedTokenAddress(
-              mintAddress,
+              assetAddress,
               toPublicKey,
               false,
               tokenProgramId
@@ -780,19 +819,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             // Check if source account has the NFT
             const fromTokenAccount = await connection.getAccountInfo(fromATA);
             if (!fromTokenAccount) {
-              console.error('❌ Source token account not found!');
-              console.log('NFT Data:', {
-                mint: nft.mint || nft.id,
-                ownership: nft.ownership,
-                interface: nft.raw?.interface,
-                compression: nft.compression || nft.raw?.compression
-              });
-              
-              throw new Error(
-                'Could not find your token account for this NFT. ' +
-                'This might be a compressed NFT or the NFT data is incorrect. ' +
-                'Please refresh your NFT list and try again.'
-              );
+              throw new Error('You do not own this NFT in your token account.');
             }
             
             console.log('✅ Found source token account');
@@ -811,13 +838,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                   fromKeypair.publicKey,
                   toATA,
                   toPublicKey,
-                  mintAddress,
+                  assetAddress,
                   tokenProgramId
                 )
               );
             }
             
-            // Add transfer instruction (NFTs have amount = 1)
+            // Add transfer instruction
             console.log('Adding transfer instruction...');
             transaction.add(
               createTransferInstruction(
@@ -850,9 +877,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               }
             );
             
-            console.log('✅ Solana NFT sent! Signature:', signature);
+            console.log('✅ SPL Token NFT sent! Signature:', signature);
             
-            // Wait for confirmation with timeout
+            // Wait for confirmation
             console.log('Waiting for confirmation...');
             const confirmation = await connection.confirmTransaction(
               {
