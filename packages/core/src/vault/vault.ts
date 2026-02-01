@@ -328,5 +328,6 @@ private stopAutoLockTimer(): void {
   if (this.autoLockTimer) {
     clearTimeout(this.autoLockTimer);
     this.autoLockTimer = null;
+    }
   }
 }
