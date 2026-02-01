@@ -18,6 +18,29 @@ function hexToUint8Array(hexString: string): Uint8Array {
   return bytes;
 }
 
+// Helper to convert 32-byte private key to 64-byte Solana secret key
+async function solanaSecretKeyFromPrivateKey(privateKeyHex: string): Promise<Uint8Array> {
+  const { Keypair } = await import('@solana/web3.js');
+  
+  // Convert hex to bytes
+  const privateKeyBytes = hexToUint8Array(privateKeyHex);
+  
+  console.log('Private key bytes length:', privateKeyBytes.length);
+  
+  // Solana uses ed25519, which needs a 64-byte secret key (32 private + 32 public)
+  // If we only have 32 bytes, we need to derive the full keypair
+  if (privateKeyBytes.length === 32) {
+    // Create keypair from seed (32 bytes)
+    const keypair = Keypair.fromSeed(privateKeyBytes);
+    return keypair.secretKey; // This is 64 bytes
+  } else if (privateKeyBytes.length === 64) {
+    // Already have the full secret key
+    return privateKeyBytes;
+  } else {
+    throw new Error(`Invalid private key length: ${privateKeyBytes.length}. Expected 32 or 64 bytes.`);
+  }
+}
+
 // Global wallet engine instance
 let walletEngine: WalletEngine | null = null;
 
