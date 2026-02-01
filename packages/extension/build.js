@@ -83,6 +83,16 @@ const buildOptions = {
   logLevel: 'info',
 };
 
+// Background script needs ESM for Buffer polyfill
+const backgroundBuildOptions = {
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  sourcemap: true,
+  logLevel: 'info',
+};
+
 // Buffer polyfill banner for background script
 const bufferPolyfill = {
   js: `import { Buffer } from 'buffer'; globalThis.Buffer = Buffer;`
@@ -91,7 +101,7 @@ const bufferPolyfill = {
 if (watch) {
   // Watch mode using context
   const ctxBackground = await esbuild.context({
-    ...buildOptions,
+    ...backgroundBuildOptions,
     entryPoints: ['src/background/index.ts'],
     outfile: 'dist/background.js',
     banner: bufferPolyfill,
@@ -121,7 +131,7 @@ if (watch) {
   // Production build
   await Promise.all([
     esbuild.build({
-      ...buildOptions,
+      ...backgroundBuildOptions,
       entryPoints: ['src/background/index.ts'],
       outfile: 'dist/background.js',
       banner: bufferPolyfill,
