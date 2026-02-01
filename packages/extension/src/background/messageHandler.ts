@@ -7,20 +7,22 @@ import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@sol
 import { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ethers } from 'ethers';
 
+// Helper function to convert hex string to Uint8Array (replaces Buffer in service worker)
+function hexToUint8Array(hexString: string): Uint8Array {
+  // Remove '0x' prefix if present
+  const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+  const bytes = new Uint8Array(cleanHex.length / 2);
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
 // Global wallet engine instance
 let walletEngine: WalletEngine | null = null;
 
 // At the top of the file, add a pending requests map
 const pendingConnectionRequests = new Map<string, Promise<any>>();
-
-// Helper function to convert hex string to Uint8Array (replaces Buffer in service worker)
-function hexToUint8Array(hexString: string): Uint8Array {
-  const bytes = new Uint8Array(hexString.length / 2);
-  for (let i = 0; i < hexString.length; i += 2) {
-    bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
-  }
-  return bytes;
-}
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -645,10 +647,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         
         try {
           if (chain === 'solana') {
-            // Dynamic import for Solana
-            const { Connection, PublicKey, Transaction, Keypair } = await import('@solana/web3.js');
-            const { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
-            
             // Send Solana NFT
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
@@ -657,8 +655,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
             // Get private key for signing
             const privateKeyStr = engine.getPrivateKey('solana', 0);
+            console.log('Private key length:', privateKeyStr.length);
+            
+            // Convert hex private key to Uint8Array
             const privateKey = hexToUint8Array(privateKeyStr);
+            console.log('Private key bytes length:', privateKey.length);
+            
             const fromKeypair = Keypair.fromSecretKey(privateKey);
+            console.log('Keypair created:', fromKeypair.publicKey.toString());
             
             // Connect to Solana
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
@@ -689,13 +693,18 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               TOKEN_PROGRAM_ID
             );
             
+            console.log('From ATA:', fromATA.toString());
+            console.log('To ATA:', toATA.toString());
+            
             // Check if destination token account exists
             const toAccountInfo = await connection.getAccountInfo(toATA);
+            console.log('Destination account exists:', !!toAccountInfo);
             
             const transaction = new Transaction();
             
             // If destination account doesn't exist, create it
             if (!toAccountInfo) {
+              console.log('Creating destination token account...');
               transaction.add(
                 createAssociatedTokenAccountInstruction(
                   fromKeypair.publicKey,
@@ -708,6 +717,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
             
             // Add transfer instruction (NFTs have amount = 1)
+            console.log('Adding transfer instruction...');
             transaction.add(
               createTransferInstruction(
                 fromATA,
@@ -720,18 +730,35 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             );
             
             // Get recent blockhash
+            console.log('Getting recent blockhash...');
             const { blockhash } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = fromKeypair.publicKey;
             
             // Sign and send transaction
+            console.log('Signing transaction...');
             transaction.sign(fromKeypair);
-            const signature = await connection.sendRawTransaction(transaction.serialize());
+            
+            console.log('Sending transaction...');
+            const signature = await connection.sendRawTransaction(
+              transaction.serialize(),
+              {
+                skipPreflight: false,
+                preflightCommitment: 'confirmed'
+              }
+            );
             
             console.log('✅ Solana NFT sent! Signature:', signature);
             
             // Wait for confirmation
-            await connection.confirmTransaction(signature, 'confirmed');
+            console.log('Waiting for confirmation...');
+            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+            
+            if (confirmation.value.err) {
+              throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+            }
+            
+            console.log('✅ Transaction confirmed!');
             
             return { 
               success: true, 
@@ -742,16 +769,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             };
             
           } else {
-            // Dynamic import for Ethereum
-            const { ethers } = await import('ethers');
-            
             // Send Ethereum NFT
             const ethAccount = engine.getCurrentAccount('ethereum');
             if (!ethAccount) {
               throw new Error('No Ethereum account found');
             }
 
-            // Get private key for signing
+            // Get private key for signing (already has 0x prefix for ethers)
             const privateKey = engine.getPrivateKey('ethereum', 0);
             
             // Connect to Ethereum
@@ -776,6 +800,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               ];
               const contract = new ethers.Contract(nft.contract.address, abi, wallet);
               
+              console.log('Sending ERC1155 NFT...');
               const tx = await contract.safeTransferFrom(
                 ethAccount.address,
                 toAddress,
@@ -785,6 +810,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               );
               
               console.log('✅ Ethereum ERC1155 sent! Hash:', tx.hash);
+              console.log('Waiting for confirmation...');
               await tx.wait();
               
               return { 
@@ -802,6 +828,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               ];
               const contract = new ethers.Contract(nft.contract.address, abi, wallet);
               
+              console.log('Sending ERC721 NFT...');
               const tx = await contract.safeTransferFrom(
                 ethAccount.address,
                 toAddress,
@@ -809,6 +836,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               );
               
               console.log('✅ Ethereum ERC721 sent! Hash:', tx.hash);
+              console.log('Waiting for confirmation...');
               await tx.wait();
               
               return { 
@@ -822,13 +850,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           }
         } catch (error: any) {
           console.error('❌ SEND_NFT error:', error);
+          console.error('Error stack:', error.stack);
           return { 
             success: false, 
             error: error.message || 'Failed to send NFT' 
           };
         }
       }
-
+      
       case 'SEND_TRANSACTION': {
         const { chain, to, amount, tokenAddress } = validatedMessage.data;
         
