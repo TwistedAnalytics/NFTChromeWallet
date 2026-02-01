@@ -8,10 +8,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@nft-wallet/shared": "workspace:*",
     "@nft-wallet/core": "workspace:*",
     "@nft-wallet/evm": "workspace:*",
+    "@nft-wallet/shared": "workspace:*",
     "@nft-wallet/sol": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
     "esbuild": "^0.19.0"
   },
   "devDependencies": {
