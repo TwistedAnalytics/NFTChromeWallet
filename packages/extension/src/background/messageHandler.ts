@@ -49,13 +49,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
     // Reset activity timer on any message (user interaction)
     if (engine.getState().isUnlocked) {
       engine.resetActivity();
-    // Also update Chrome storage for persistent tracking
-    await chrome.storage.local.set({ lastActivityTime: Date.now() });
-    }
-    
-    // Reset activity timer on any message (user interaction)
-    if (engine.getState().isUnlocked) {
-      engine.resetActivity();
+      // Also update Chrome storage for persistent tracking
+      await chrome.storage.local.set({ lastActivityTime: Date.now() });
     }
 
     switch (validatedMessage.type) {
@@ -85,8 +80,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
       
       case 'RESET_ACTIVITY': {
-      engine.resetActivity();
-      return { success: true };
+        engine.resetActivity();
+        await chrome.storage.local.set({ lastActivityTime: Date.now() });
+        return { success: true };
       }
       
       case 'WALLET_IMPORT': {
@@ -114,213 +110,204 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-  case 'WALLET_UNLOCK': {
-  console.log('WALLET_UNLOCK received');
-  const data = WalletUnlockSchema.parse(validatedMessage.data);
-  const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA, 'autoLockMinutes']);
-  const vaultData: VaultData = result[STORAGE_KEYS.VAULT_DATA];
-  if (!vaultData) {
-    throw new Error('No vault data found');
-  }
-  await engine.unlockWallet(vaultData, data.password);
-
-  // Restore saved auto-lock time
-  const autoLockMinutes = result.autoLockMinutes || 5;
-  engine.setAutoLockTime(autoLockMinutes);
-  
-  // Set initial activity time for alarm-based auto-lock
-  await chrome.storage.local.set({ 
-    lastActivityTime: Date.now(),
-    autoLockMinutes: autoLockMinutes
-  });
-  
-  // Restore saved auto-lock time and set initial activity time
-  engine.setAutoLockTime(autoLockMinutes);
-  await chrome.storage.local.set({ 
-    lastActivityTime: Date.now(),
-    autoLockEnabled: true,
-  });
-  
-  const state = engine.getState();
-  const solAccount = engine.getCurrentAccount('solana');
-  const ethAccount = engine.getCurrentAccount('ethereum');
-
-  await saveWalletState(state);
-
-  console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
-
-  return { 
-    success: true, 
-    data: { 
-      address: solAccount?.address,
-      ethAddress: ethAccount?.address,
-      isUnlocked: true
-    } 
-  };
-}
-      
-  case 'GET_BALANCE': {
-  const state = engine.getState();
-  const solAccount = engine.getCurrentAccount('solana');
-  const ethAccount = engine.getCurrentAccount('ethereum');
-  
-  console.log('GET_BALANCE - SOL account:', solAccount?.address);
-  console.log('GET_BALANCE - ETH account:', ethAccount?.address);
-  
-  let solBalance = '0.000000000';
-  let ethBalance = '0.000000000';
-  
-  // Fetch SOL balance from Solana with timeout
-  if (solAccount && state.isUnlocked) {
-    try {
-      const rpcEndpoints = [
-        'https://rpc.helius.xyz/?api-key=647bbd34-42b3-418b-bf6c-c3a40813b41c',
-        'https://rpc.ankr.com/solana',
-        'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe'
-      ];
-      
-      let fetchSuccess = false;
-      for (const solanaRpc of rpcEndpoints) {
-        if (fetchSuccess) break;
-        
-        try {
-          console.log(`Trying Solana RPC: ${solanaRpc}`);
-          
-          // Add 5 second timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          
-          const response = await fetch(solanaRpc, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              id: 1,
-              method: 'getBalance',
-              params: [solAccount.address]
-            }),
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            console.error(`HTTP ${response.status}`);
-            continue;
-          }
-          
-          const data = await response.json();
-          console.log('SOL balance response:', data);
-          
-          if (data.result?.value !== undefined) {
-            const lamports = data.result.value;
-            solBalance = (lamports / 1_000_000_000).toFixed(9);
-            console.log(`✅ SOL balance: ${solBalance} SOL`);
-            fetchSuccess = true;
-            break;
-          }
-        } catch (rpcError: any) {
-          if (rpcError.name === 'AbortError') {
-            console.error(`⏱️ Timeout for ${solanaRpc}`);
-          } else {
-            console.error(`❌ Failed with ${solanaRpc}:`, rpcError.message);
-          }
-          continue;
+      case 'WALLET_UNLOCK': {
+        console.log('WALLET_UNLOCK received');
+        const data = WalletUnlockSchema.parse(validatedMessage.data);
+        const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA, 'autoLockMinutes']);
+        const vaultData: VaultData = result[STORAGE_KEYS.VAULT_DATA];
+        if (!vaultData) {
+          throw new Error('No vault data found');
         }
-      }
-      
-      if (!fetchSuccess) {
-        console.warn('⚠️ Could not fetch SOL balance from any RPC');
-      }
-    } catch (error) {
-      console.error('Failed to fetch SOL balance:', error);
-    }
-  }
-  
-  // Fetch ETH balance from Ethereum with timeout
-  if (ethAccount && state.isUnlocked) {
-    try {
-      const ethRpcEndpoints = [
-        'https://rpc.ankr.com/eth',
-        'https://ethereum.publicnode.com',
-        'https://eth.llamarpc.com'
-      ];
-      
-      let ethFetchSuccess = false;
-      for (const ethRpc of ethRpcEndpoints) {
-        if (ethFetchSuccess) break;
+        await engine.unlockWallet(vaultData, data.password);
+
+        // Restore saved auto-lock time and set initial activity time
+        const autoLockMinutes = result.autoLockMinutes || 5;
+        engine.setAutoLockTime(autoLockMinutes);
+        await chrome.storage.local.set({ 
+          lastActivityTime: Date.now(),
+          autoLockMinutes: autoLockMinutes
+        });
         
-        try {
-          console.log('Fetching ETH balance from:', ethRpc);
-          
-          // Add 5 second timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          
-          const response = await fetch(ethRpc, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              id: 1,
-              method: 'eth_getBalance',
-              params: [ethAccount.address, 'latest']
-            }),
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            console.error(`ETH RPC HTTP ${response.status}`);
-            continue;
-          }
-          
-          const data = await response.json();
-          console.log('ETH balance response:', data);
-          
-          if (data.result) {
-            const weiBalance = BigInt(data.result);
-            ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
-            console.log('✅ ETH balance:', ethBalance);
-            ethFetchSuccess = true;
-            break;
-          }
-        } catch (ethRpcError: any) {
-          if (ethRpcError.name === 'AbortError') {
-            console.error(`⏱️ Timeout for ${ethRpc}`);
-          } else {
-            console.error(`❌ Failed with ${ethRpc}:`, ethRpcError.message);
-          }
-          continue;
-        }
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+
+        await saveWalletState(state);
+
+        console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+
+        return { 
+          success: true, 
+          data: { 
+            address: solAccount?.address,
+            ethAddress: ethAccount?.address,
+            isUnlocked: true
+          } 
+        };
       }
       
-      if (!ethFetchSuccess) {
-        console.warn('⚠️ Could not fetch ETH balance from any RPC');
+      case 'GET_BALANCE': {
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+        
+        console.log('GET_BALANCE - SOL account:', solAccount?.address);
+        console.log('GET_BALANCE - ETH account:', ethAccount?.address);
+        
+        let solBalance = '0.000000000';
+        let ethBalance = '0.000000000';
+        
+        // Fetch SOL balance from Solana with timeout
+        if (solAccount && state.isUnlocked) {
+          try {
+            const rpcEndpoints = [
+              'https://rpc.helius.xyz/?api-key=647bbd34-42b3-418b-bf6c-c3a40813b41c',
+              'https://rpc.ankr.com/solana',
+              'https://solana-mainnet.core.chainstack.com/b6682c75a23d778300253783ba806bfe'
+            ];
+            
+            let fetchSuccess = false;
+            for (const solanaRpc of rpcEndpoints) {
+              if (fetchSuccess) break;
+              
+              try {
+                console.log(`Trying Solana RPC: ${solanaRpc}`);
+                
+                // Add 5 second timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(solanaRpc, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getBalance',
+                    params: [solAccount.address]
+                  }),
+                  signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                  console.error(`HTTP ${response.status}`);
+                  continue;
+                }
+                
+                const data = await response.json();
+                console.log('SOL balance response:', data);
+                
+                if (data.result?.value !== undefined) {
+                  const lamports = data.result.value;
+                  solBalance = (lamports / 1_000_000_000).toFixed(9);
+                  console.log(`✅ SOL balance: ${solBalance} SOL`);
+                  fetchSuccess = true;
+                  break;
+                }
+              } catch (rpcError: any) {
+                if (rpcError.name === 'AbortError') {
+                  console.error(`⏱️ Timeout for ${solanaRpc}`);
+                } else {
+                  console.error(`❌ Failed with ${solanaRpc}:`, rpcError.message);
+                }
+                continue;
+              }
+            }
+            
+            if (!fetchSuccess) {
+              console.warn('⚠️ Could not fetch SOL balance from any RPC');
+            }
+          } catch (error) {
+            console.error('Failed to fetch SOL balance:', error);
+          }
+        }
+        
+        // Fetch ETH balance from Ethereum with timeout
+        if (ethAccount && state.isUnlocked) {
+          try {
+            const ethRpcEndpoints = [
+              'https://rpc.ankr.com/eth',
+              'https://ethereum.publicnode.com',
+              'https://eth.llamarpc.com'
+            ];
+            
+            let ethFetchSuccess = false;
+            for (const ethRpc of ethRpcEndpoints) {
+              if (ethFetchSuccess) break;
+              
+              try {
+                console.log('Fetching ETH balance from:', ethRpc);
+                
+                // Add 5 second timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(ethRpc, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'eth_getBalance',
+                    params: [ethAccount.address, 'latest']
+                  }),
+                  signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                  console.error(`ETH RPC HTTP ${response.status}`);
+                  continue;
+                }
+                
+                const data = await response.json();
+                console.log('ETH balance response:', data);
+                
+                if (data.result) {
+                  const weiBalance = BigInt(data.result);
+                  ethBalance = (Number(weiBalance) / 1e18).toFixed(9);
+                  console.log('✅ ETH balance:', ethBalance);
+                  ethFetchSuccess = true;
+                  break;
+                }
+              } catch (ethRpcError: any) {
+                if (ethRpcError.name === 'AbortError') {
+                  console.error(`⏱️ Timeout for ${ethRpc}`);
+                } else {
+                  console.error(`❌ Failed with ${ethRpc}:`, ethRpcError.message);
+                }
+                continue;
+              }
+            }
+            
+            if (!ethFetchSuccess) {
+              console.warn('⚠️ Could not fetch ETH balance from any RPC');
+            }
+          } catch (error) {
+            console.error('Failed to fetch ETH balance:', error);
+          }
+        }
+        
+        // Check for balance changes and notify
+        if (solAccount && ethAccount) {
+          await checkBalanceChanges(solBalance, ethBalance, solAccount.address, ethAccount.address);
+        }
+        
+        return { 
+          success: true, 
+          data: { 
+            balance: solBalance,
+            ethBalance: ethBalance
+          } 
+        };
       }
-    } catch (error) {
-      console.error('Failed to fetch ETH balance:', error);
-    }
-  }
-  
-  // Check for balance changes and notify
-  if (solAccount && ethAccount) {
-    await checkBalanceChanges(solBalance, ethBalance, solAccount.address, ethAccount.address);
-  }
-  
-  return { 
-    success: true, 
-    data: { 
-      balance: solBalance,
-      ethBalance: ethBalance
-    } 
-  };
-}
 
       case 'GET_MNEMONIC': {
         const state = engine.getState();
@@ -332,13 +319,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'GET_PRIVATE_KEY': {
-      const state = engine.getState();
-      if (!state.isUnlocked) {
-        throw new Error('Wallet is locked');
-      }
-      const { chain } = validatedMessage.data;
-      const privateKey = engine.getPrivateKey(chain, 0);
-      return { success: true, data: { privateKey } };
+        const state = engine.getState();
+        if (!state.isUnlocked) {
+          throw new Error('Wallet is locked');
+        }
+        const { chain } = validatedMessage.data;
+        const privateKey = engine.getPrivateKey(chain, 0);
+        return { success: true, data: { privateKey } };
       }
 
       case 'WALLET_LOCK': {
@@ -374,166 +361,166 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: { sites } };
       }
 
-        case 'GET_NFTS': {
-  const state = engine.getState();
-  const solAccount = engine.getCurrentAccount('solana');
-  const ethAccount = engine.getCurrentAccount('ethereum');
-  
-  if (!state.isUnlocked) {
-    return { success: true, data: { nfts: [] } };
-  }
+      case 'GET_NFTS': {
+        const state = engine.getState();
+        const solAccount = engine.getCurrentAccount('solana');
+        const ethAccount = engine.getCurrentAccount('ethereum');
+        
+        if (!state.isUnlocked) {
+          return { success: true, data: { nfts: [] } };
+        }
 
-  console.log('Fetching NFTs for SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+        console.log('Fetching NFTs for SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
 
-  try {
-    const allNfts: any[] = [];
-    
-    // Fetch Solana NFTs
-    if (solAccount?.address) {
-      try {
-        const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
-        const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
-        
-        console.log('Fetching SOL NFTs for:', solAccount.address);
-        
-        const solResponse = await fetch(heliusUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 'sol-nft',
-            method: 'getAssetsByOwner',
-            params: {
-              ownerAddress: solAccount.address,
-              page: 1,
-              limit: 1000
-            }
-          })
-        });
-        
-        const solData = await solResponse.json();
-        console.log('Helius response:', solData);
-        
-        if (solData.result?.items) {
-          const solNfts = solData.result.items.map((nft: any) => ({
-            // Core identifiers
-            id: nft.id,
-            chain: 'solana',
-            mint: nft.id,
-            tokenId: nft.id,
-            
-            // Contract/Collection info
-            contract: {
-              address: nft.id,
-              name: nft.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || 'Unknown Collection',
-              tokenType: nft.interface || 'Unknown',
-            },
-            
-            // Metadata
-            metadata: {
-              name: nft.content?.metadata?.name || `#${nft.id.slice(0, 8)}`,
-              description: nft.content?.metadata?.description || '',
-              image: nft.content?.links?.image || nft.content?.files?.[0]?.uri || '',
-              attributes: nft.content?.metadata?.attributes || [],
+        try {
+          const allNfts: any[] = [];
+          
+          // Fetch Solana NFTs
+          if (solAccount?.address) {
+            try {
+              const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+              const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
               
-              // Additional metadata
-              symbol: nft.content?.metadata?.symbol || '',
-              external_url: nft.content?.links?.external_url || '',
-              animation_url: nft.content?.links?.animation_url || '',
-            },
-            
-            // Ownership info
-            ownership: {
-              owner: nft.ownership?.owner || solAccount.address,
-              frozen: nft.ownership?.frozen || false,
-              delegated: nft.ownership?.delegated || false,
-            },
-            
-            // Creators
-            creators: nft.creators || [],
-            
-            // Royalty
-            royalty: nft.royalty || {},
-            
-            // Compression (for cNFTs)
-            compression: nft.compression || {},
-            
-            // Raw data for advanced use
-            raw: nft,
-          }));
-          allNfts.push(...solNfts);
-          console.log('Found', solNfts.length, 'Solana NFTs');
+              console.log('Fetching SOL NFTs for:', solAccount.address);
+              
+              const solResponse = await fetch(heliusUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: 'sol-nft',
+                  method: 'getAssetsByOwner',
+                  params: {
+                    ownerAddress: solAccount.address,
+                    page: 1,
+                    limit: 1000
+                  }
+                })
+              });
+              
+              const solData = await solResponse.json();
+              console.log('Helius response:', solData);
+              
+              if (solData.result?.items) {
+                const solNfts = solData.result.items.map((nft: any) => ({
+                  // Core identifiers
+                  id: nft.id,
+                  chain: 'solana',
+                  mint: nft.id,
+                  tokenId: nft.id,
+                  
+                  // Contract/Collection info
+                  contract: {
+                    address: nft.id,
+                    name: nft.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || 'Unknown Collection',
+                    tokenType: nft.interface || 'Unknown',
+                  },
+                  
+                  // Metadata
+                  metadata: {
+                    name: nft.content?.metadata?.name || `#${nft.id.slice(0, 8)}`,
+                    description: nft.content?.metadata?.description || '',
+                    image: nft.content?.links?.image || nft.content?.files?.[0]?.uri || '',
+                    attributes: nft.content?.metadata?.attributes || [],
+                    
+                    // Additional metadata
+                    symbol: nft.content?.metadata?.symbol || '',
+                    external_url: nft.content?.links?.external_url || '',
+                    animation_url: nft.content?.links?.animation_url || '',
+                  },
+                  
+                  // Ownership info
+                  ownership: {
+                    owner: nft.ownership?.owner || solAccount.address,
+                    frozen: nft.ownership?.frozen || false,
+                    delegated: nft.ownership?.delegated || false,
+                  },
+                  
+                  // Creators
+                  creators: nft.creators || [],
+                  
+                  // Royalty
+                  royalty: nft.royalty || {},
+                  
+                  // Compression (for cNFTs)
+                  compression: nft.compression || {},
+                  
+                  // Raw data for advanced use
+                  raw: nft,
+                }));
+                allNfts.push(...solNfts);
+                console.log('Found', solNfts.length, 'Solana NFTs');
+              }
+            } catch (solError) {
+              console.error('Solana NFT fetch error:', solError);
+            }
+          }
+          
+          // Fetch Ethereum NFTs
+          if (ethAccount?.address) {
+            try {
+              const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
+              const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+              
+              console.log('Fetching ETH NFTs for:', ethAccount.address);
+              
+              const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
+              const ethData = await ethResponse.json();
+              
+              console.log('Alchemy response:', ethData);
+              
+              if (ethData.ownedNfts) {
+                const ethNfts = ethData.ownedNfts.map((nft: any) => ({
+                  // Core identifiers
+                  id: `${nft.contract.address}-${nft.id.tokenId}`,
+                  chain: 'ethereum',
+                  tokenId: nft.id.tokenId,
+                  
+                  // Contract info
+                  contract: {
+                    address: nft.contract.address,
+                    name: nft.contractMetadata?.name || nft.contract.name || 'Unknown',
+                    tokenType: nft.id.tokenMetadata?.tokenType || nft.contract.tokenType || 'ERC721',
+                    symbol: nft.contractMetadata?.symbol || '',
+                  },
+                  
+                  // Metadata
+                  metadata: {
+                    name: nft.title || nft.metadata?.name || nft.name || `#${nft.id.tokenId}`,
+                    description: nft.description || nft.metadata?.description || '',
+                    image: nft.media?.[0]?.gateway || nft.media?.[0]?.raw || nft.metadata?.image || '',
+                    attributes: nft.metadata?.attributes || nft.rawMetadata?.attributes || [],
+                    external_url: nft.metadata?.external_url || '',
+                    animation_url: nft.metadata?.animation_url || '',
+                  },
+                  
+                  // Additional info
+                  timeLastUpdated: nft.timeLastUpdated,
+                  balance: nft.balance || '1',
+                  
+                  // Raw data
+                  raw: nft,
+                }));
+                allNfts.push(...ethNfts);
+                console.log('Found', ethNfts.length, 'Ethereum NFTs');
+              }
+            } catch (ethError) {
+              console.error('Ethereum NFT fetch error:', ethError);
+            }
+          }
+          
+          console.log('Total NFTs found:', allNfts.length);
+          
+          // Cache results
+          await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: allNfts });
+          
+          return { success: true, data: { nfts: allNfts } };
+        } catch (error) {
+          console.error('NFT fetch error:', error);
+          const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
+          return { success: true, data: { nfts: result[STORAGE_KEYS.NFT_CACHE] || [] } };
         }
-      } catch (solError) {
-        console.error('Solana NFT fetch error:', solError);
       }
-    }
-    
-    // Fetch Ethereum NFTs
-    if (ethAccount?.address) {
-      try {
-        const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
-        const alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
-        
-        console.log('Fetching ETH NFTs for:', ethAccount.address);
-        
-        const ethResponse = await fetch(`${alchemyUrl}/getNFTs/?owner=${ethAccount.address}`);
-        const ethData = await ethResponse.json();
-        
-        console.log('Alchemy response:', ethData);
-        
-        if (ethData.ownedNfts) {
-          const ethNfts = ethData.ownedNfts.map((nft: any) => ({
-            // Core identifiers
-            id: `${nft.contract.address}-${nft.id.tokenId}`,
-            chain: 'ethereum',
-            tokenId: nft.id.tokenId,
-            
-            // Contract info
-            contract: {
-              address: nft.contract.address,
-              name: nft.contractMetadata?.name || nft.contract.name || 'Unknown',
-              tokenType: nft.id.tokenMetadata?.tokenType || nft.contract.tokenType || 'ERC721',
-              symbol: nft.contractMetadata?.symbol || '',
-            },
-            
-            // Metadata
-            metadata: {
-              name: nft.title || nft.metadata?.name || nft.name || `#${nft.id.tokenId}`,
-              description: nft.description || nft.metadata?.description || '',
-              image: nft.media?.[0]?.gateway || nft.media?.[0]?.raw || nft.metadata?.image || '',
-              attributes: nft.metadata?.attributes || nft.rawMetadata?.attributes || [],
-              external_url: nft.metadata?.external_url || '',
-              animation_url: nft.metadata?.animation_url || '',
-            },
-            
-            // Additional info
-            timeLastUpdated: nft.timeLastUpdated,
-            balance: nft.balance || '1',
-            
-            // Raw data
-            raw: nft,
-          }));
-          allNfts.push(...ethNfts);
-          console.log('Found', ethNfts.length, 'Ethereum NFTs');
-        }
-      } catch (ethError) {
-        console.error('Ethereum NFT fetch error:', ethError);
-      }
-    }
-    
-    console.log('Total NFTs found:', allNfts.length);
-    
-    // Cache results
-    await chrome.storage.local.set({ [STORAGE_KEYS.NFT_CACHE]: allNfts });
-    
-    return { success: true, data: { nfts: allNfts } };
-  } catch (error) {
-    console.error('NFT fetch error:', error);
-    const result = await chrome.storage.local.get([STORAGE_KEYS.NFT_CACHE]);
-    return { success: true, data: { nfts: result[STORAGE_KEYS.NFT_CACHE] || [] } };
-  }
-}
 
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
