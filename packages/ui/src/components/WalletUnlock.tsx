@@ -25,10 +25,9 @@ export const WalletUnlock: React.FC<WalletUnlockProps> = ({ onSubmit }) => {
     setIsUnlocking(false);
 
     if (!result.success) {
-      setError(result.error || 'Incorrect password');
+      setError('ERROR');
       setPassword('');
     }
-  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-[#1a1625] via-[#2d1b3d] to-[#1a1625]">
