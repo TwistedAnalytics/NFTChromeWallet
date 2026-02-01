@@ -8,6 +8,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@metaplex-foundation/mpl-core": "^1.7.0",
+    "@metaplex-foundation/umi": "^1.4.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.4.1",
     "@nft-wallet/core": "workspace:*",
     "@nft-wallet/evm": "workspace:*",
     "@nft-wallet/shared": "workspace:*",
