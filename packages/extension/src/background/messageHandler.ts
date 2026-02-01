@@ -115,34 +115,40 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         };
       }
 
-      case 'WALLET_UNLOCK': {
-        console.log('WALLET_UNLOCK received');
-        const data = WalletUnlockSchema.parse(validatedMessage.data);
-        const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA]);
-        const vaultData: VaultData = result[STORAGE_KEYS.VAULT_DATA];
-        if (!vaultData) {
-          throw new Error('No vault data found');
-        }
-        await engine.unlockWallet(vaultData, data.password);
-        const state = engine.getState();
-        const solAccount = engine.getCurrentAccount('solana');
-        const ethAccount = engine.getCurrentAccount('ethereum');
+  case 'WALLET_UNLOCK': {
+  console.log('WALLET_UNLOCK received');
+  const data = WalletUnlockSchema.parse(validatedMessage.data);
+  const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA, 'autoLockMinutes']);
+  const vaultData: VaultData = result[STORAGE_KEYS.VAULT_DATA];
+  if (!vaultData) {
+    throw new Error('No vault data found');
+  }
+  await engine.unlockWallet(vaultData, data.password);
   
-        await saveWalletState(state);
+  // Restore saved auto-lock time
+  if (result.autoLockMinutes) {
+    engine.setAutoLockTime(result.autoLockMinutes);
+  }
   
-        console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
-  
-        return { 
-          success: true, 
-          data: { 
-            address: solAccount?.address,
-            ethAddress: ethAccount?.address,
-            isUnlocked: true
-          } 
-        };
-      }
+  const state = engine.getState();
+  const solAccount = engine.getCurrentAccount('solana');
+  const ethAccount = engine.getCurrentAccount('ethereum');
 
-      case 'GET_BALANCE': {
+  await saveWalletState(state);
+
+  console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
+
+  return { 
+    success: true, 
+    data: { 
+      address: solAccount?.address,
+      ethAddress: ethAccount?.address,
+      isUnlocked: true
+    } 
+  };
+}
+      
+  case 'GET_BALANCE': {
   const state = engine.getState();
   const solAccount = engine.getCurrentAccount('solana');
   const ethAccount = engine.getCurrentAccount('ethereum');
