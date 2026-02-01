@@ -12,8 +12,8 @@ export const Send: React.FC<SendProps> = ({ nft }) => {
   const { sendNFT } = useNFTs();
   const { navigate } = useNavigation();
 
-  const handleSend = async (to: string, amount: number) => {
-    const result = await sendNFT(nft, to, amount);
+  const handleSend = async (toAddress: string) => {
+    const result = await sendNFT(nft, toAddress);
     if (result.success) {
       navigate('gallery');
     }
