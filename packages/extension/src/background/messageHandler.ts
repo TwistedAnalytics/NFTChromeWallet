@@ -552,7 +552,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: settings };
       }
 
-            case 'PERMISSION_REQUEST': {
+      case 'PERMISSION_REQUEST': {
         console.log('🟢 Background: PERMISSION_REQUEST received', validatedMessage.data);
         const origin = sender.origin || sender.url || 'unknown';
         const state = engine.getState();
@@ -590,31 +590,22 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         
         return result;
       }
-  
-      // Get the account for the requested chain
-      const { chain, requestedPermissions } = validatedMessage.data;
-      const account = engine.getCurrentAccount(chain);
-  
-      if (!account) {
-        throw new Error(`No ${chain} account found`);
+
+      case 'PERMISSION_CHECK': {
+        const origin = sender.origin || sender.url || 'unknown';
+        const hasPermission = await checkPermission(origin, validatedMessage.data.chain);
+        return { success: true, data: hasPermission };
       }
-  
-      // Grant permission
-      await requestPermission({ 
-        ...validatedMessage.data, 
-        origin,
-        requestedAccounts: [account.address]
-      });
-  
-  // Return account info (this is what connect() expects)
-  return { 
-    success: true, 
-    data: {
-      address: account.address,
-      publicKey: account.address
-    }
-  };
-}
+
+      case 'PERMISSION_REVOKE': {
+        await revokePermission(validatedMessage.data.origin);
+        return { success: true };
+      }
+
+      case 'PERMISSION_LIST': {
+        const permissions = await listPermissions();
+        return { success: true, data: permissions };
+      }
 
       case 'SIGN_MESSAGE': {
         const { message: msg, chain, address } = validatedMessage.data;
