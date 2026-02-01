@@ -344,6 +344,19 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: { privateKey } };
       }
 
+      case 'SET_AUTO_LOCK_TIME': {
+        const { minutes } = validatedMessage.data;
+        engine.setAutoLockTime(minutes);
+        await chrome.storage.local.set({ autoLockMinutes: minutes });
+        console.log(`✅ Auto-lock time set to ${minutes} minutes`);
+        return { success: true, data: { minutes } };
+      }
+
+      case 'RESET_ACTIVITY': {
+        await chrome.storage.local.set({ lastActivityTime: Date.now() });
+        return { success: true };
+      }
+
       case 'WALLET_LOCK': {
         engine.lockWallet();
         const state = engine.getState();
