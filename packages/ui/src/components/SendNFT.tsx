@@ -71,11 +71,11 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Recipient Address</label>
+          <label className="block text-sm font-medium mb-2 text-gray-300">Recipient Address</label>
           <input
             type="text"
-            className="input-field"
-            placeholder="0x..."
+            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
+            placeholder="0x... or Solana address"
             value={toAddress}
             onChange={(e) => setToAddress(e.target.value)}
             disabled={isSending}
