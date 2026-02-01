@@ -386,11 +386,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         return { success: true, data: { minutes } };
       }
 
-      case 'RESET_ACTIVITY': {
-        await chrome.storage.local.set({ lastActivityTime: Date.now() });
-        return { success: true };
-      }
-
       case 'CHANGE_PASSWORD': {
         const { currentPassword, newPassword } = validatedMessage.data;
         const state = engine.getState();
