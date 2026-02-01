@@ -48,36 +48,42 @@ const AppContent: React.FC = () => {
     checkWallet();
   }, []);
 
-  // Auto-initialize balances when wallet is unlocked
+  // Auto-initialize balances when wallet is unlocked (with caching)
   useEffect(() => {
     if (isUnlocked && address) {
-      console.log('Wallet is unlocked, fetching balances...');
+      console.log('Wallet is unlocked, checking cached balances...');
       
       // Reset activity on popup open
       chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
       
-      chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
-        console.log('Auto-fetch balance response:', response);
+      // Check if we have recent cached balances (within 30 seconds)
+      chrome.storage.local.get(['lastBalanceFetch', 'cachedSolBalance', 'cachedEthBalance']).then((result) => {
+        const lastFetch = result.lastBalanceFetch || 0;
+        const now = Date.now();
+        const CACHE_DURATION = 30000; // 30 seconds
+        
+        if (now - lastFetch < CACHE_DURATION && result.cachedSolBalance && result.cachedEthBalance) {
+          console.log('✅ Using cached balances (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
+          store.setBalance(result.cachedSolBalance);
+          store.setEthBalance(result.cachedEthBalance);
+        } else {
+          console.log('⏳ Fetching fresh balances...');
+          chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
+            if (response?.success) {
+              console.log('✅ Fresh balances fetched');
+              // Cache the new balances
+              chrome.storage.local.set({
+                lastBalanceFetch: now,
+                cachedSolBalance: response.data.balance,
+                cachedEthBalance: response.data.ethBalance
+              });
+            }
+          });
+        }
       });
     }
   }, [isUnlocked, address]);
-
-  // Reset activity timer on user interaction IN THE POPUP
-  useEffect(() => {
-    if (!isUnlocked) return;
-
-    const resetActivity = () => {
-      chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
-    };
-
-    const events = ['click', 'keydown', 'scroll', 'mousemove'];
-    events.forEach(event => window.addEventListener(event, resetActivity));
-
-    return () => {
-      events.forEach(event => window.removeEventListener(event, resetActivity));
-    };
-  }, [isUnlocked]);
-
+  
   if (isLoading || hasWallet === null) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
