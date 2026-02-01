@@ -70,7 +70,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
             <button
               onClick={() => navigate('home')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
-                state.currentPage === 'home'
+                state.page === 'home'
                   ? 'text-purple-400'
                   : 'text-gray-400 hover:text-white'
               }`}
@@ -84,7 +84,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
             <button
               onClick={() => navigate('gallery')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
-                state.currentPage === 'gallery'
+                state.page === 'gallery'
                   ? 'text-purple-400'
                   : 'text-gray-400 hover:text-white'
               }`}
@@ -98,7 +98,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
             <button
               onClick={() => navigate('history')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
-                state.currentPage === 'history'
+                state.page === 'history'
                   ? 'text-purple-400'
                   : 'text-gray-400 hover:text-white'
               }`}
@@ -112,7 +112,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
             <button
               onClick={() => navigate('settings')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
-                state.currentPage === 'settings'
+                state.page === 'settings'
                   ? 'text-purple-400'
                   : 'text-gray-400 hover:text-white'
               }`}
@@ -126,3 +126,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) =
           </div>
         </nav>
       )}
+    </div>
+  );
+};
