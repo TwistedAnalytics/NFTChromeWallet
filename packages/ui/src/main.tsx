@@ -17,6 +17,53 @@ const AppContent: React.FC = () => {
   const { state } = useNavigation();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
+      useEffect(() => {
+    const checkWallet = async () => {
+      try {
+        const result = await chrome.storage.local.get(['vaultData', 'walletState']);
+        const hasVault = !!result.vaultData;
+        console.log('Vault check:', { 
+          hasVault, 
+          vaultData: result.vaultData,
+          walletState: result.walletState 
+        });
+        
+        setHasWallet(hasVault);
+
+        // If vault exists, check background state
+        if (hasVault) {
+          const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+          console.log('Background status:', statusResponse);
+          
+          if (statusResponse.success && statusResponse.data) {
+            const isUnlocked = statusResponse.data.isUnlocked;
+            console.log('Is unlocked in background?', isUnlocked);
+            
+            if (isUnlocked) {
+              // Sync UI with background
+              store.setUnlocked(true);
+              store.setAddress(statusResponse.data.address);
+              store.setEthAddress(statusResponse.data.ethAddress);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking wallet:', error);
+        setHasWallet(false);
+      }
+    };
+
+    checkWallet();
+  }, []);
+
+  // Auto-initialize balances when wallet is unlocked
+  useEffect(() => {
+    if (isUnlocked && address) {
+      console.log('Wallet is unlocked, fetching balances...');
+      
+      // Reset activity on popup open
+      chrome.runtime.sendMessage({ type: 'RESET_ACTIVITY' }).catch(() => {});
+    
     useEffect(() => {
     const checkWallet = async () => {
       try {
