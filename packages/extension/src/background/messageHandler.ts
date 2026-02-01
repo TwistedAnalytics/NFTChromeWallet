@@ -3,8 +3,8 @@ import { MessageSchema, WalletCreateSchema, WalletUnlockSchema } from '@nft-wall
 import type { Message, MessageResponse, WalletState, VaultData } from '@nft-wallet/shared';
 import { checkPermission, requestPermission, revokePermission, listPermissions } from './permissionManager.js';
 import { checkBalanceChanges, checkNFTChanges } from './notificationHandler.js';
-import { Connection, PublicKey, Transaction, SystemProgram, sendAndConfirmTransaction, Keypair } from '@solana/web3.js';
-import { createTransferInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
+import { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { ethers } from 'ethers';
 
 // Global wallet engine instance
@@ -636,6 +636,10 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         
         try {
           if (chain === 'solana') {
+            // Dynamic import for Solana
+            const { Connection, PublicKey, Transaction, Keypair } = await import('@solana/web3.js');
+            const { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+            
             // Send Solana NFT
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
@@ -683,7 +687,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             
             // If destination account doesn't exist, create it
             if (!toAccountInfo) {
-              const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
               transaction.add(
                 createAssociatedTokenAccountInstruction(
                   fromKeypair.publicKey,
@@ -730,6 +733,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             };
             
           } else {
+            // Dynamic import for Ethereum
+            const { ethers } = await import('ethers');
+            
             // Send Ethereum NFT
             const ethAccount = engine.getCurrentAccount('ethereum');
             if (!ethAccount) {
@@ -825,6 +831,10 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
         try {
           if (chain === 'solana') {
+            // Dynamic import for Solana
+            const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = await import('@solana/web3.js');
+            const { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
+            
             // Send SOL or SPL tokens
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
@@ -882,7 +892,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               // Check if destination account exists
               const toAccountInfo = await connection.getAccountInfo(toATA);
               if (!toAccountInfo) {
-                const { createAssociatedTokenAccountInstruction } = await import('@solana/spl-token');
                 transaction.add(
                   createAssociatedTokenAccountInstruction(
                     fromKeypair.publicKey,
@@ -922,6 +931,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
             
           } else {
+            // Dynamic import for Ethereum
+            const { ethers } = await import('ethers');
+            
             // Send ETH or ERC20 tokens
             const ethAccount = engine.getCurrentAccount('ethereum');
             if (!ethAccount) {
@@ -979,7 +991,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           };
         }
       }
-
+      
       case 'ACCOUNT_GET_CURRENT': {
         const { chain } = validatedMessage.data;
         const account = engine.getCurrentAccount(chain);
