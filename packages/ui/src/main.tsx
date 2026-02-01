@@ -30,17 +30,34 @@ const AppContent: React.FC = () => {
     }
 
     const checkWallet = async () => {
-      // ... existing wallet check code
+      try {
+        const result = await chrome.storage.local.get(['vaultData']);
+        const hasVault = !!result.vaultData;
+        console.log('Has vault:', hasVault);
+        setHasWallet(hasVault);
+
+        // If vault exists, check if background says it's unlocked
+        if (hasVault) {
+          const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+          console.log('Background status:', statusResponse);
+          
+          if (statusResponse.success && statusResponse.data?.isUnlocked) {
+            // Background says unlocked, sync UI
+            store.setUnlocked(true);
+            store.setAddress(statusResponse.data.address);
+            store.setEthAddress(statusResponse.data.ethAddress);
+            console.log('✅ Synced with background: wallet is unlocked');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking wallet:', error);
+        setHasWallet(false);
+      }
     };
 
     checkWallet();
   }, []);
 
-  // Handle connection approval screen
-  if (isConnectionRequest) {
-    return <ConnectionApproval />;
-  }
-  
   // Auto-initialize balances when wallet is unlocked (with caching)
   useEffect(() => {
     if (isUnlocked && address) {
@@ -76,6 +93,11 @@ const AppContent: React.FC = () => {
       });
     }
   }, [isUnlocked, address]);
+
+  // Handle connection approval screen FIRST
+  if (isConnectionRequest) {
+    return <ConnectionApproval />;
+  }
   
   if (isLoading || hasWallet === null) {
     return (
@@ -110,7 +132,7 @@ const AppContent: React.FC = () => {
         return <Home />;
       case 'gallery':
         return <Gallery />;
-       case 'history':
+      case 'history':
         return <History />;
       case 'nft-detail':
         return state.data?.nft ? <NFTView nft={state.data.nft} /> : <Gallery />;
