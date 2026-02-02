@@ -1,25 +1,25 @@
 import { create } from 'zustand';
-import type { NFT, Network } from '@nft-wallet/shared';
+import type { NFT } from '@nft-wallet/shared';
 
 interface WalletState {
   isUnlocked: boolean;
-  address: string | null;  // Solana address
-  ethAddress: string | null;  // Add Ethereum address
-  balance: string;  // SOL balance
-  ethBalance: string;  // Add ETH balance
+  address: string | null;
+  ethAddress: string | null;
+  balance: string;
+  ethBalance: string;
   nfts: NFT[];
-  currentNetwork: Network;
+  currentNetwork: string;
   connectedSites: string[];
   isLoading: boolean;
   error: string | null;
 
   setUnlocked: (unlocked: boolean) => void;
   setAddress: (address: string | null) => void;
-  setEthAddress: (address: string | null) => void;  // Add setter
+  setEthAddress: (address: string | null) => void;
   setBalance: (balance: string) => void;
-  setEthBalance: (balance: string) => void;  // Add setter
+  setEthBalance: (balance: string) => void;
   setNFTs: (nfts: NFT[]) => void;
-  setCurrentNetwork: (network: Network) => void;
+  setCurrentNetwork: (network: string) => void;
   setConnectedSites: (sites: string[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -29,11 +29,11 @@ interface WalletState {
 const initialState = {
   isUnlocked: false,
   address: null,
-  ethAddress: null,  // Add this
+  ethAddress: null,
   balance: '0',
-  ethBalance: '0',  // Add this
+  ethBalance: '0',
   nfts: [],
-  selectedNetwork: (storedState?.selectedNetwork || 'mainnet') as any,
+  currentNetwork: 'mainnet',
   connectedSites: [],
   isLoading: false,
   error: null,
@@ -44,9 +44,9 @@ export const useWalletStore = create<WalletState>((set) => ({
 
   setUnlocked: (unlocked) => set({ isUnlocked: unlocked }),
   setAddress: (address) => set({ address }),
-  setEthAddress: (ethAddress) => set({ ethAddress }),  // Add this
+  setEthAddress: (ethAddress) => set({ ethAddress }),
   setBalance: (balance) => set({ balance }),
-  setEthBalance: (ethBalance) => set({ ethBalance }),  // Add this
+  setEthBalance: (ethBalance) => set({ ethBalance }),
   setNFTs: (nfts) => set({ nfts }),
   setCurrentNetwork: (network) => set({ currentNetwork: network }),
   setConnectedSites: (sites) => set({ connectedSites: sites }),
