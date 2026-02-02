@@ -7,6 +7,12 @@
     "dev": "node build.js --watch",
     "clean": "rm -rf dist"
   },
+    "scripts": {
+    "dev": "node build.js --watch",
+    "build": "node build.js",
+    "clean": "rm -rf dist",
+    "test": "echo \"No tests yet\""
+  },
   "dependencies": {
     "@metaplex-foundation/mpl-core": "^1.7.0",
     "@metaplex-foundation/umi": "^1.4.1",
