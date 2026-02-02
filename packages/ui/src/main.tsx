@@ -66,14 +66,14 @@ const AppContent: React.FC = () => {
       
       // Check if we have recent cached balances (within 30 seconds)
       chrome.storage.local.get(['lastBalanceFetch', 'cachedSolBalance', 'cachedEthBalance']).then((result) => {
-        const lastFetch = result.lastBalanceFetch || 0;
+        const lastFetch = result.lastBalanceFetch ?? 0;
         const now = Date.now();
-        const CACHE_DURATION = 30000; // 30 seconds
+        const CACHE_DURATION = 30000;
         
-        if (now - lastFetch < CACHE_DURATION && result.cachedSolBalance && result.cachedEthBalance) {
+        if (now - lastFetch < CACHE_DURATION && result.cachedSolBalance != null && result.cachedEthBalance != null) {
           console.log('✅ Using cached balances (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
-          store.setBalance(String(result.cachedSolBalance ?? '0'));
-          store.setEthBalance(String(result.cachedEthBalance ?? '0'));
+          store.setBalance(String(result.cachedSolBalance));
+          store.setEthBalance(String(result.cachedEthBalance));
         } else {
           console.log('⏳ Fetching fresh balances...');
           chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
