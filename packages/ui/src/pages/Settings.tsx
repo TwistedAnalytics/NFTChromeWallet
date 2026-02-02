@@ -42,7 +42,7 @@ useEffect(() => {
   // Load saved auto-lock setting
   chrome.storage.local.get(['autoLockMinutes']).then((result) => {
     if (result.autoLockMinutes) {
-      setAutoLockMinutes(Number(result.autoLockMinutes) || 5);
+        setAutoLockMinutes(Number(result.autoLockMinutes) || 5);
     }
   });
 }, []);
