@@ -197,8 +197,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
         await engine.unlockWallet(vaultData, password);
         
-        // Store password temporarily (encrypted in memory) to restore vault on service worker restart
-        // NOTE: This is stored in chrome.storage.local which is encrypted by Chrome
+        // Store password temporarily for service worker restart
         await chrome.storage.local.set({ 
           unlockedPassword: password,
           lastActivityTime: Date.now()
@@ -210,17 +209,14 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
 
-        // Start monitoring for incoming transactions
-        startMonitoring();
-
         console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
 
-        // Store addresses for background monitoring
+        // Store addresses for background monitoring (even when locked)
         await chrome.storage.local.set({
           lastSolAddress: solAccount?.address,
           lastEthAddress: ethAccount?.address
         });
-        
+
         return { 
           success: true, 
           data: { 
@@ -470,13 +466,16 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       case 'WALLET_LOCK': {
-        engine.lockWallet();
-        stopMonitoring();
+        console.log('WALLET_LOCK received');
+        engine.lock();
+        
+        // Clear the temporarily stored password
+        await chrome.storage.local.remove(['unlockedPassword']);
+        
         const state = engine.getState();
         await saveWalletState(state);
-        // Clear stored password
-        await chrome.storage.local.remove('unlockedPassword');
-        return { success: true, data: state };
+        
+        return { success: true };
       }
 
       case 'WALLET_GET_STATE': {
