@@ -1,3 +1,6 @@
+import { Connection, PublicKey } from '@solana/web3.js';
+import { ethers } from 'ethers';
+
 interface BalanceCache {
   solBalance: string;
   ethBalance: string;
@@ -15,70 +18,141 @@ const CACHE_KEYS = {
 };
 
 /**
- * Check for balance changes and notify
+ * Check for incoming assets (works even when locked)
  */
-export async function checkBalanceChanges(
-  solBalance: string,
-  ethBalance: string,
-  solAddress: string,
-  ethAddress: string
-): Promise<void> {
-  const result = await chrome.storage.local.get([CACHE_KEYS.BALANCE_CACHE]);
-  const cached: BalanceCache | undefined = result[CACHE_KEYS.BALANCE_CACHE];
-
-  if (cached) {
-    const solChanged = parseFloat(solBalance) > parseFloat(cached.solBalance);
-    const ethChanged = parseFloat(ethBalance) > parseFloat(cached.ethBalance);
-
-    if (solChanged) {
-      const amount = (parseFloat(solBalance) - parseFloat(cached.solBalance)).toFixed(9);
-      await showNotification(
-        'SOL Received! 🎉',
-        `+${amount} SOL received\nAddress: ${solAddress.slice(0, 6)}...${solAddress.slice(-4)}`
-      );
+export async function checkForIncomingAssets(): Promise<void> {
+  try {
+    // Get wallet addresses from storage (available even when locked)
+    const result = await chrome.storage.local.get(['vaultData']);
+    if (!result.vaultData) {
+      return; // No wallet created yet
     }
 
-    if (ethChanged) {
-      const amount = (parseFloat(ethBalance) - parseFloat(cached.ethBalance)).toFixed(9);
-      await showNotification(
-        'ETH Received! 🎉',
-        `+${amount} ETH received\nAddress: ${ethAddress.slice(0, 6)}...${ethAddress.slice(-4)}`
-      );
+    // Get the last known addresses
+    const addressResult = await chrome.storage.local.get(['lastSolAddress', 'lastEthAddress']);
+    if (!addressResult.lastSolAddress || !addressResult.lastEthAddress) {
+      return; // Addresses not yet stored
     }
+
+    const solAddress = addressResult.lastSolAddress;
+    const ethAddress = addressResult.lastEthAddress;
+
+    // Check balances
+    await checkBalances(solAddress, ethAddress);
+    
+    // Check NFTs
+    await checkNFTs(solAddress);
+    
+  } catch (error) {
+    console.error('Error checking for incoming assets:', error);
   }
-
-  // Update cache
-  await chrome.storage.local.set({
-    [CACHE_KEYS.BALANCE_CACHE]: {
-      solBalance,
-      ethBalance,
-      lastChecked: Date.now(),
-    } as BalanceCache,
-  });
 }
 
 /**
- * Check for new NFTs and notify
+ * Check balances and notify if increased
  */
-export async function checkNFTChanges(nftCount: number): Promise<void> {
-  const result = await chrome.storage.local.get([CACHE_KEYS.NFT_COUNT_CACHE]);
-  const cached: NFTCache | undefined = result[CACHE_KEYS.NFT_COUNT_CACHE];
+async function checkBalances(solAddress: string, ethAddress: string): Promise<void> {
+  try {
+    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+    const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
 
-  if (cached && nftCount > cached.nftCount) {
-    const newNFTs = nftCount - cached.nftCount;
-    await showNotification(
-      'New NFT! 🖼️',
-      `You received ${newNFTs} new NFT${newNFTs > 1 ? 's' : ''}!`
-    );
+    // Get SOL balance
+    const solConnection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
+    const solBalance = await solConnection.getBalance(new PublicKey(solAddress));
+    const solBalanceFormatted = (solBalance / 1e9).toFixed(9);
+
+    // Get ETH balance
+    const ethProvider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
+    const ethBalance = await ethProvider.getBalance(ethAddress);
+    const ethBalanceFormatted = parseFloat(ethers.formatEther(ethBalance)).toFixed(9);
+
+    // Check against cached values
+    const result = await chrome.storage.local.get([CACHE_KEYS.BALANCE_CACHE]);
+    const cached: BalanceCache | undefined = result[CACHE_KEYS.BALANCE_CACHE];
+
+    if (cached) {
+      const solChanged = parseFloat(solBalanceFormatted) > parseFloat(cached.solBalance);
+      const ethChanged = parseFloat(ethBalanceFormatted) > parseFloat(cached.ethBalance);
+
+      if (solChanged) {
+        const amount = (parseFloat(solBalanceFormatted) - parseFloat(cached.solBalance)).toFixed(4);
+        await showNotification(
+          '💰 SOL Received!',
+          `+${amount} SOL\nNew balance: ${parseFloat(solBalanceFormatted).toFixed(4)} SOL`
+        );
+      }
+
+      if (ethChanged) {
+        const amount = (parseFloat(ethBalanceFormatted) - parseFloat(cached.ethBalance)).toFixed(4);
+        await showNotification(
+          '💰 ETH Received!',
+          `+${amount} ETH\nNew balance: ${parseFloat(ethBalanceFormatted).toFixed(4)} ETH`
+        );
+      }
+    }
+
+    // Update cache
+    await chrome.storage.local.set({
+      [CACHE_KEYS.BALANCE_CACHE]: {
+        solBalance: solBalanceFormatted,
+        ethBalance: ethBalanceFormatted,
+        lastChecked: Date.now(),
+      } as BalanceCache,
+    });
+
+  } catch (error) {
+    console.error('Error checking balances:', error);
   }
+}
 
-  // Update cache
-  await chrome.storage.local.set({
-    [CACHE_KEYS.NFT_COUNT_CACHE]: {
-      nftCount,
-      lastChecked: Date.now(),
-    } as NFTCache,
-  });
+/**
+ * Check for new NFTs
+ */
+async function checkNFTs(solAddress: string): Promise<void> {
+  try {
+    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+
+    const response = await fetch(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'nft-check',
+        method: 'getAssetsByOwner',
+        params: {
+          ownerAddress: solAddress,
+          page: 1,
+          limit: 1000
+        }
+      })
+    });
+
+    const data = await response.json();
+    const nftCount = data.result?.items?.length || 0;
+
+    // Check against cached count
+    const result = await chrome.storage.local.get([CACHE_KEYS.NFT_COUNT_CACHE]);
+    const cached: NFTCache | undefined = result[CACHE_KEYS.NFT_COUNT_CACHE];
+
+    if (cached && nftCount > cached.nftCount) {
+      const newNFTs = nftCount - cached.nftCount;
+      await showNotification(
+        '🎨 New NFT Received!',
+        `You received ${newNFTs} new NFT${newNFTs > 1 ? 's' : ''}!`
+      );
+    }
+
+    // Update cache
+    await chrome.storage.local.set({
+      [CACHE_KEYS.NFT_COUNT_CACHE]: {
+        nftCount,
+        lastChecked: Date.now(),
+      } as NFTCache,
+    });
+
+  } catch (error) {
+    console.error('Error checking NFTs:', error);
+  }
 }
 
 /**
@@ -88,12 +162,29 @@ async function showNotification(title: string, message: string): Promise<void> {
   try {
     await chrome.notifications.create({
       type: 'basic',
-      iconUrl: chrome.runtime.getURL('icon-128.png'),
+      iconUrl: 'icons/icon-128.png',
       title,
       message,
       priority: 2,
     });
+    console.log('📬 Notification shown:', title);
   } catch (error) {
     console.error('Failed to show notification:', error);
   }
+}
+
+// Export the old functions for compatibility
+export async function checkBalanceChanges(
+  solBalance: string,
+  ethBalance: string,
+  solAddress: string,
+  ethAddress: string
+): Promise<void> {
+  // This is now handled by checkForIncomingAssets
+  // Keep for backward compatibility
+}
+
+export async function checkNFTChanges(nftCount: number): Promise<void> {
+  // This is now handled by checkForIncomingAssets
+  // Keep for backward compatibility
 }
