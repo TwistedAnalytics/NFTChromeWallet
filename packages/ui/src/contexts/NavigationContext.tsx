@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { NFT } from '@nft-wallet/shared';
 
-export type PageType = 'home' | 'gallery' | 'nft-detail' | 'send' | 'settings';
+export type PageType = 'home' | 'gallery' | 'nft-detail' | 'send' | 'settings' | 'history';
 
 interface PageData {
   nft?: NFT;
