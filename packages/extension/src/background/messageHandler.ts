@@ -467,7 +467,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       case 'WALLET_LOCK': {
         console.log('WALLET_LOCK received');
-        engine.lock();
+        engine.lockWallet();  // CHANGED: was engine.lock()
         
         // Clear the temporarily stored password
         await chrome.storage.local.remove(['unlockedPassword']);
