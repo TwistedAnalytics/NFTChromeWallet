@@ -20,8 +20,8 @@ export const useNFTs = () => {
       const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for NFTs (they don't change often)
 
       if (now - lastFetch < CACHE_DURATION && result.cachedNFTs) {
-        console.log('✅ Using cached NFTs (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
-        setNFTs(result.cachedNFTs);
+      console.log('✅ Using cached NFTs (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
+      setNFTs(Array.isArray(result.cachedNFTs) ? result.cachedNFTs : []);
         return;
       }
     }
