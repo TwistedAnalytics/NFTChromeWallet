@@ -6,7 +6,7 @@ interface NetworkSelectorProps {
   onNetworkChange: (network: Network) => void;
 }
 
-const networks: { value: Network; label: string }[] = [
+const networks: { value: string; label: string }[] = [
   { value: 'mainnet', label: 'Ethereum Mainnet' },
   { value: 'goerli', label: 'Goerli Testnet' },
   { value: 'sepolia', label: 'Sepolia Testnet' },
