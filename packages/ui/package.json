@@ -7,6 +7,13 @@
     "dev": "vite",
     "clean": "rm -rf dist"
   },
+    "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "clean": "rm -rf dist",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
   "dependencies": {
     "@nft-wallet/shared": "workspace:*",
     "react": "^18.2.0",
