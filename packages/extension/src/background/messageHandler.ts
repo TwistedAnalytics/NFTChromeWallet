@@ -191,6 +191,12 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const result = await chrome.storage.local.get([STORAGE_KEYS.VAULT_DATA]);
         const vaultData = result[STORAGE_KEYS.VAULT_DATA];
 
+        // Store addresses for background monitoring
+        await chrome.storage.local.set({
+          lastSolAddress: solAccount?.address,
+          lastEthAddress: ethAccount?.address
+        });
+
         if (!vaultData) {
           throw new Error('No wallet found');
         }
