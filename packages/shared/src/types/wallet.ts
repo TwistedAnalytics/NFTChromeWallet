@@ -1,4 +1,24 @@
 /**
+ * Network type (simplified)
+ */
+export type NetworkType = 'mainnet' | 'goerli' | 'sepolia';
+
+/**
+ * Network configuration
+ */
+export interface Network {
+  id: string;
+  name: string;
+  chainId: number | string;
+  rpcUrl: string;
+  explorerUrl?: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+}
+/**
  * Network configuration
  */
 export interface Network {
