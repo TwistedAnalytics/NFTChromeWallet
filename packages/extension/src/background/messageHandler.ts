@@ -679,6 +679,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         }
       }
 
+      //send start
       case 'SEND_NFT': {
         const { nft, toAddress } = validatedMessage.data;
         
@@ -688,366 +689,239 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           throw new Error('Wallet is locked');
         }
 
-        // Determine chain from NFT data
         const chain = nft?.chain || (nft?.mint ? 'solana' : 'ethereum');
         
         try {
-            //nft code 21
-
-            if (chain === 'solana') {
-            // Send Solana NFT
+          if (chain === 'solana') {
+            // Send Solana NFT using direct transaction construction
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
               throw new Error('No Solana account found');
             }
 
-            // Get private key for signing
             const privateKeyStr = engine.getPrivateKey('solana', 0);
-            console.log('Private key string length:', privateKeyStr.length);
-            
-            // Convert to proper Solana secret key (64 bytes)
             const secretKey = await solanaSecretKeyFromPrivateKey(privateKeyStr);
-            console.log('Secret key bytes length:', secretKey.length);
-            
             const fromKeypair = Keypair.fromSecretKey(secretKey);
-            console.log('Keypair created:', fromKeypair.publicKey.toString());
             
-            // Connect to Solana
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
-            const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, 'confirmed');
+            const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
             
-            // Get mint/asset address
-            const assetAddress = new PublicKey(nft.mint || nft.id);
-            const toPublicKey = new PublicKey(toAddress);
-            
-            const nftInterface = nft.raw?.interface || nft.interface || '';
-            
-            console.log('📤 Sending Solana NFT:', {
-              asset: assetAddress.toString(),
-              interface: nftInterface,
+            console.log('📤 Building transfer for:', {
+              asset: nft.mint || nft.id,
               from: solAccount.address,
               to: toAddress
             });
             
-            // Check if this is a compressed NFT
-            if (nft.compression?.compressed || nft.raw?.compression?.compressed) {
-              throw new Error(
-                'Compressed NFTs (cNFTs) are not yet supported. ' +
-                'These use Metaplex Bubblegum and require special transfer logic.'
-              );
+            // Use Helius DAS API to build the transfer transaction
+            const response = await fetch(heliusUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 'send-nft',
+                method: 'getAsset',
+                params: {
+                  id: nft.mint || nft.id
+                }
+              })
+            });
+            
+            const assetData = await response.json();
+            console.log('Asset data:', assetData);
+            
+            if (assetData.error) {
+              throw new Error(`Failed to fetch asset: ${assetData.error.message}`);
             }
             
-            //send metacore
-                        // Handle Metaplex Core Assets
-            if (nftInterface === 'MplCoreAsset' || nftInterface.includes('MplCore')) {
-              console.log('📦 Metaplex Core Asset - using MPL Core transfer');
-              console.log('Full NFT data:', JSON.stringify(nft, null, 2));
+            const asset = assetData.result;
+            const assetInterface = asset.interface;
+            
+            console.log('Asset interface:', assetInterface);
+            
+            // For Metaplex Core Assets, use specialized transfer
+            if (assetInterface === 'MplCoreAsset') {
+              console.log('Using Metaplex Core transfer');
               
-              try {
-                // Dynamic import for Metaplex Core
-                const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
-                const { createSignerFromKeypair, signerIdentity, publicKey: umiPublicKey, some, none } = await import('@metaplex-foundation/umi');
-                const { transferV1, fetchAssetV1 } = await import('@metaplex-foundation/mpl-core');
-                
-                // Create Umi instance
-                const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
-                
-                // Create Umi keypair from secret key
-                const umiKeypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
-                const signer = createSignerFromKeypair(umi, umiKeypair);
-                umi.use(signerIdentity(signer));
-                
-                console.log('Umi signer:', signer.publicKey);
-                
-                // Get collection from Helius data - it's in the grouping array
-                let collectionPubkey = null;
-                
-                // Method 1: Check grouping from raw data
-                const grouping = nft.raw?.grouping || nft.grouping;
-                console.log('Grouping data:', grouping);
-                
-                if (grouping && Array.isArray(grouping)) {
-                  const collectionGroup = grouping.find((g: any) => g.group_key === 'collection');
-                  if (collectionGroup && collectionGroup.group_value) {
-                    console.log('Found collection in grouping:', collectionGroup.group_value);
-                    collectionPubkey = umiPublicKey(collectionGroup.group_value);
-                  }
+              const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
+              const { createSignerFromKeypair, signerIdentity, publicKey: umiPublicKey } = await import('@metaplex-foundation/umi');
+              const { transferV1 } = await import('@metaplex-foundation/mpl-core');
+              
+              const umi = createUmi(heliusUrl);
+              const umiKeypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
+              const signer = createSignerFromKeypair(umi, umiKeypair);
+              umi.use(signerIdentity(signer));
+              
+              // Get collection from grouping
+              let collection = null;
+              if (asset.grouping) {
+                const collectionGroup = asset.grouping.find((g: any) => g.group_key === 'collection');
+                if (collectionGroup?.group_value) {
+                  collection = umiPublicKey(collectionGroup.group_value);
+                  console.log('Collection:', collection);
                 }
-                
-                // Method 2: Fetch asset on-chain and check
-                if (!collectionPubkey) {
-                  console.log('Fetching asset on-chain to find collection...');
-                  const asset = await fetchAssetV1(umi, umiPublicKey(assetAddress.toString()));
-                  console.log('Asset data:', asset);
-                  
-                  // Check updateAuthority structure for collection
-                  if (asset.updateAuthority) {
-                    console.log('UpdateAuthority:', asset.updateAuthority);
-                    
-                    // Metaplex Core v1 structure
-                    if (typeof asset.updateAuthority === 'object' && 'type' in asset.updateAuthority) {
-                      if (asset.updateAuthority.type === 'Collection') {
-                        collectionPubkey = asset.updateAuthority.address;
-                        console.log('Found collection from updateAuthority.address:', collectionPubkey);
-                      }
-                    }
-                  }
-                }
-                
-                console.log('Final collection pubkey:', collectionPubkey);
-                
-                if (!collectionPubkey) {
-                  throw new Error(
-                    'Could not determine collection address for this NFT. ' +
-                    'This Metaplex Core Asset requires a collection to transfer. ' +
-                    'Please check the console logs and report this issue.'
-                  );
-                }
-                
-                // Build transfer instruction with collection
-                console.log('Building transfer with collection...');
-                const tx = await transferV1(umi, {
-                  asset: umiPublicKey(assetAddress.toString()),
-                  newOwner: umiPublicKey(toAddress),
-                  collection: some(collectionPubkey),
-                }).sendAndConfirm(umi);
-                
-                // Convert signature to base58
-                const bs58 = await import('bs58');
-                const signature = bs58.default.encode(tx.signature);
-                
-                console.log('✅ Metaplex Core NFT sent! Signature:', signature);
-                
-                return {
-                  success: true,
-                  data: {
-                    txHash: signature,
-                    explorerUrl: `https://solscan.io/tx/${signature}`
-                  }
-                };
-              } catch (error: any) {
-                console.error('❌ Metaplex Core transfer error:', error);
-                console.error('Error stack:', error.stack);
-                console.error('Error logs:', error.logs);
-                throw new Error(`Failed to transfer Metaplex Core Asset: ${error.message}`);
               }
+              
+              const transferBuilder = transferV1(umi, {
+                asset: umiPublicKey(nft.mint || nft.id),
+                newOwner: umiPublicKey(toAddress),
+              });
+              
+              // Add collection if it exists
+              if (collection) {
+                (transferBuilder as any).collection = collection;
+              }
+              
+              const tx = await transferBuilder.sendAndConfirm(umi);
+              const bs58 = await import('bs58');
+              const signature = bs58.default.encode(tx.signature);
+              
+              console.log('✅ NFT sent! Signature:', signature);
+              
+              return {
+                success: true,
+                data: {
+                  txHash: signature,
+                  explorerUrl: `https://solscan.io/tx/${signature}`
+                }
+              };
             }
             
-            // send SPL Token NFTs
-            console.log('📦 Regular SPL Token NFT');
-            
-            // Detect which token program this NFT uses
-            const mintInfo = await connection.getAccountInfo(assetAddress);
-            if (!mintInfo) {
-              throw new Error('Could not find NFT mint account.');
-            }
-            
-            // Token-2022 uses a different program ID
-            const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
-            
-            // Check which program owns this mint
-            const isToken2022 = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
-            const tokenProgramId = isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
-            
-            console.log('Token Program:', isToken2022 ? 'Token-2022' : 'Legacy Token Program');
-            
-            // Get associated token accounts
-            const fromATA = await getAssociatedTokenAddress(
-              assetAddress,
-              fromKeypair.publicKey,
-              false,
-              tokenProgramId
-            );
-            
-            const toATA = await getAssociatedTokenAddress(
-              assetAddress,
-              toPublicKey,
-              false,
-              tokenProgramId
-            );
-            
-            console.log('From ATA:', fromATA.toString());
-            console.log('To ATA:', toATA.toString());
-            
-            // Check if source account has the NFT
-            const fromTokenAccount = await connection.getAccountInfo(fromATA);
-            if (!fromTokenAccount) {
-              throw new Error('You do not own this NFT in your token account.');
-            }
-            
-            console.log('✅ Found source token account');
-            
-            // Check if destination token account exists
-            const toAccountInfo = await connection.getAccountInfo(toATA);
-            console.log('Destination account exists:', !!toAccountInfo);
-            
-            const transaction = new Transaction();
-            
-            // If destination account doesn't exist, create it
-            if (!toAccountInfo) {
-              console.log('Creating destination token account...');
+            // For regular SPL tokens
+            else {
+              console.log('Using SPL Token transfer');
+              
+              const connection = new Connection(heliusUrl, 'confirmed');
+              const mintAddress = new PublicKey(nft.mint || nft.id);
+              const toPublicKey = new PublicKey(toAddress);
+              
+              const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
+              
+              const mintInfo = await connection.getAccountInfo(mintAddress);
+              if (!mintInfo) {
+                throw new Error('NFT mint not found');
+              }
+              
+              const tokenProgramId = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID) 
+                ? TOKEN_2022_PROGRAM_ID 
+                : TOKEN_PROGRAM_ID;
+              
+              const fromATA = await getAssociatedTokenAddress(
+                mintAddress,
+                fromKeypair.publicKey,
+                false,
+                tokenProgramId
+              );
+              
+              const toATA = await getAssociatedTokenAddress(
+                mintAddress,
+                toPublicKey,
+                false,
+                tokenProgramId
+              );
+              
+              const transaction = new Transaction();
+              
+              const toAccountInfo = await connection.getAccountInfo(toATA);
+              if (!toAccountInfo) {
+                transaction.add(
+                  createAssociatedTokenAccountInstruction(
+                    fromKeypair.publicKey,
+                    toATA,
+                    toPublicKey,
+                    mintAddress,
+                    tokenProgramId
+                  )
+                );
+              }
+              
               transaction.add(
-                createAssociatedTokenAccountInstruction(
-                  fromKeypair.publicKey,
+                createTransferInstruction(
+                  fromATA,
                   toATA,
-                  toPublicKey,
-                  assetAddress,
+                  fromKeypair.publicKey,
+                  1,
+                  [],
                   tokenProgramId
                 )
               );
-            }
-            
-            // Add transfer instruction
-            console.log('Adding transfer instruction...');
-            transaction.add(
-              createTransferInstruction(
-                fromATA,
-                toATA,
-                fromKeypair.publicKey,
-                1, // NFT amount is always 1
-                [],
-                tokenProgramId
-              )
-            );
-            
-            // Get recent blockhash
-            console.log('Getting recent blockhash...');
-            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-            transaction.recentBlockhash = blockhash;
-            transaction.feePayer = fromKeypair.publicKey;
-            
-            // Sign and send transaction
-            console.log('Signing transaction...');
-            transaction.sign(fromKeypair);
-            
-            console.log('Sending transaction...');
-            const signature = await connection.sendRawTransaction(
-              transaction.serialize(),
-              {
+              
+              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+              transaction.recentBlockhash = blockhash;
+              transaction.feePayer = fromKeypair.publicKey;
+              
+              transaction.sign(fromKeypair);
+              
+              const signature = await connection.sendRawTransaction(transaction.serialize(), {
                 skipPreflight: false,
-                preflightCommitment: 'confirmed',
-                maxRetries: 3
-              }
-            );
-            
-            console.log('✅ SPL Token NFT sent! Signature:', signature);
-            
-            // Wait for confirmation
-            console.log('Waiting for confirmation...');
-            const confirmation = await connection.confirmTransaction(
-              {
-                signature,
-                blockhash,
-                lastValidBlockHeight
-              },
-              'confirmed'
-            );
-            
-            if (confirmation.value.err) {
-              throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+                preflightCommitment: 'confirmed'
+              });
+              
+              await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+              
+              console.log('✅ NFT sent! Signature:', signature);
+              
+              return {
+                success: true,
+                data: {
+                  txHash: signature,
+                  explorerUrl: `https://solscan.io/tx/${signature}`
+                }
+              };
             }
             
-            console.log('✅ Transaction confirmed!');
-            
-            return { 
-              success: true, 
-              data: { 
-                txHash: signature,
-                explorerUrl: `https://solscan.io/tx/${signature}`
-              } 
-            };
-          
-            //end new
           } else {
-            // Send Ethereum NFT
+            // Ethereum NFT transfer (existing code)
             const ethAccount = engine.getCurrentAccount('ethereum');
             if (!ethAccount) {
               throw new Error('No Ethereum account found');
             }
 
-            // Get private key for signing (already has 0x prefix for ethers)
             const privateKey = engine.getPrivateKey('ethereum', 0);
-            
-            // Connect to Ethereum
             const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
             const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
             const wallet = new ethers.Wallet(privateKey, provider);
             
-            console.log('📤 Sending Ethereum NFT:', {
-              contract: nft.contract?.address,
-              tokenId: nft.tokenId,
-              from: ethAccount.address,
-              to: toAddress
-            });
-            
-            // Determine if ERC721 or ERC1155
             const isERC1155 = nft.contract?.tokenType?.includes('1155') || nft.balance > 1;
             
             if (isERC1155) {
-              // ERC1155 transfer
-              const abi = [
-                'function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data)'
-              ];
+              const abi = ['function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data)'];
               const contract = new ethers.Contract(nft.contract.address, abi, wallet);
-              
-              console.log('Sending ERC1155 NFT...');
-              const tx = await contract.safeTransferFrom(
-                ethAccount.address,
-                toAddress,
-                nft.tokenId,
-                1, // Amount
-                '0x' // Data
-              );
-              
-              console.log('✅ Ethereum ERC1155 sent! Hash:', tx.hash);
-              console.log('Waiting for confirmation...');
+              const tx = await contract.safeTransferFrom(ethAccount.address, toAddress, nft.tokenId, 1, '0x');
               await tx.wait();
               
-              return { 
-                success: true, 
-                data: { 
+              return {
+                success: true,
+                data: {
                   txHash: tx.hash,
                   explorerUrl: `https://etherscan.io/tx/${tx.hash}`
-                } 
+                }
               };
-              
             } else {
-              // ERC721 transfer
-              const abi = [
-                'function safeTransferFrom(address from, address to, uint256 tokenId)'
-              ];
+              const abi = ['function safeTransferFrom(address from, address to, uint256 tokenId)'];
               const contract = new ethers.Contract(nft.contract.address, abi, wallet);
-              
-              console.log('Sending ERC721 NFT...');
-              const tx = await contract.safeTransferFrom(
-                ethAccount.address,
-                toAddress,
-                nft.tokenId
-              );
-              
-              console.log('✅ Ethereum ERC721 sent! Hash:', tx.hash);
-              console.log('Waiting for confirmation...');
+              const tx = await contract.safeTransferFrom(ethAccount.address, toAddress, nft.tokenId);
               await tx.wait();
               
-              return { 
-                success: true, 
-                data: { 
+              return {
+                success: true,
+                data: {
                   txHash: tx.hash,
                   explorerUrl: `https://etherscan.io/tx/${tx.hash}`
-                } 
+                }
               };
             }
           }
         } catch (error: any) {
           console.error('❌ SEND_NFT error:', error);
-          console.error('Error stack:', error.stack);
-          return { 
-            success: false, 
-            error: error.message || 'Failed to send NFT' 
+          return {
+            success: false,
+            error: error.message || 'Failed to send NFT'
           };
         }
       }
-      
+
+      //send end
+      // start transaction
       case 'SEND_TRANSACTION': {
         const { chain, to, amount, tokenAddress } = validatedMessage.data;
         
