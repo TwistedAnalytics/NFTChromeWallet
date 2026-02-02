@@ -3,6 +3,10 @@ import { Buffer } from 'buffer';
 import { handleMessage } from './messageHandler.js';
 import { startBalanceMonitoring } from './notificationHandler.js';
 
+// Add at the top with other imports
+let lastKnownBalances: { sol: string; eth: string } = { sol: '0', eth: '0' };
+let lastKnownNFTCount = 0;
+
 console.log('VaultNFT background service worker starting...');
 
 // Initialize on install
@@ -136,3 +140,142 @@ self.addEventListener('unhandledrejection', (event) => {
 });
 
 console.log('VaultNFT background service worker ready');
+
+// Function to show notification
+async function showNotification(title: string, message: string, iconUrl?: string) {
+  await chrome.notifications.create({
+    type: 'basic',
+    iconUrl: iconUrl || '/icons/icon128.png',
+    title: title,
+    message: message,
+    priority: 2
+  });
+}
+
+// Function to check for balance changes
+async function checkBalanceChanges() {
+  try {
+    const state = engine.getState();
+    if (!state.isUnlocked) return;
+
+    // Get current balances
+    const solAccount = engine.getCurrentAccount('solana');
+    const ethAccount = engine.getCurrentAccount('ethereum');
+
+    if (!solAccount || !ethAccount) return;
+
+    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+    const ALCHEMY_API_KEY = 'WD0X0NprnF2uHt6pb_dWC';
+
+    // Check Solana balance
+    const solConnection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
+    const solBalance = await solConnection.getBalance(new PublicKey(solAccount.address));
+    const solBalanceFormatted = (solBalance / 1e9).toFixed(4);
+
+    // Check Ethereum balance
+    const ethProvider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
+    const ethBalance = await ethProvider.getBalance(ethAccount.address);
+    const ethBalanceFormatted = parseFloat(ethers.formatEther(ethBalance)).toFixed(4);
+
+    // Compare with last known balances
+    if (parseFloat(solBalanceFormatted) > parseFloat(lastKnownBalances.sol)) {
+      const diff = (parseFloat(solBalanceFormatted) - parseFloat(lastKnownBalances.sol)).toFixed(4);
+      await showNotification(
+        '💰 SOL Received!',
+        `+${diff} SOL received\nNew balance: ${solBalanceFormatted} SOL`
+      );
+    }
+
+    if (parseFloat(ethBalanceFormatted) > parseFloat(lastKnownBalances.eth)) {
+      const diff = (parseFloat(ethBalanceFormatted) - parseFloat(lastKnownBalances.eth)).toFixed(4);
+      await showNotification(
+        '💰 ETH Received!',
+        `+${diff} ETH received\nNew balance: ${ethBalanceFormatted} ETH`
+      );
+    }
+
+    // Update last known balances
+    lastKnownBalances = {
+      sol: solBalanceFormatted,
+      eth: ethBalanceFormatted
+    };
+
+  } catch (error) {
+    console.error('Error checking balance changes:', error);
+  }
+}
+
+// Function to check for new NFTs
+async function checkNFTChanges() {
+  try {
+    const state = engine.getState();
+    if (!state.isUnlocked) return;
+
+    const solAccount = engine.getCurrentAccount('solana');
+    const ethAccount = engine.getCurrentAccount('ethereum');
+
+    if (!solAccount || !ethAccount) return;
+
+    const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
+
+    // Get Solana NFTs
+    const solResponse = await fetch(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'nft-check',
+        method: 'getAssetsByOwner',
+        params: {
+          ownerAddress: solAccount.address,
+          page: 1,
+          limit: 1000
+        }
+      })
+    });
+
+    const solData = await solResponse.json();
+    const currentNFTCount = solData.result?.items?.length || 0;
+
+    // Check if NFT count increased
+    if (currentNFTCount > lastKnownNFTCount && lastKnownNFTCount > 0) {
+      const newNFTs = currentNFTCount - lastKnownNFTCount;
+      await showNotification(
+        '🎨 New NFT Received!',
+        `You received ${newNFTs} new NFT${newNFTs > 1 ? 's' : ''}!`
+      );
+    }
+
+    lastKnownNFTCount = currentNFTCount;
+
+  } catch (error) {
+    console.error('Error checking NFT changes:', error);
+  }
+}
+
+// Initialize monitoring when wallet is unlocked
+let monitoringInterval: NodeJS.Timeout | null = null;
+
+function startMonitoring() {
+  if (monitoringInterval) return;
+
+  console.log('🔔 Starting balance and NFT monitoring...');
+
+  // Check immediately to set baseline
+  checkBalanceChanges();
+  checkNFTChanges();
+
+  // Then check every 30 seconds
+  monitoringInterval = setInterval(() => {
+    checkBalanceChanges();
+    checkNFTChanges();
+  }, 30000); // 30 seconds
+}
+
+function stopMonitoring() {
+  if (monitoringInterval) {
+    clearInterval(monitoringInterval);
+    monitoringInterval = null;
+    console.log('🔕 Stopped monitoring');
+  }
+}
