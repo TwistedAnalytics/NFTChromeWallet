@@ -681,7 +681,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       //send start
       
-            case 'SEND_NFT': {
+      case 'SEND_NFT': {
         const { nft, toAddress } = validatedMessage.data;
         
         console.log('🚀 SEND_NFT request:', { nft, toAddress });
@@ -755,7 +755,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 success: true,
                 data: {
                   txHash: signature,
-                  explorerUrl: `https://solscan.io/tx/${signature}`
+                  explorerUrl: `https://solscan.io/tx/${signature}`,
+                  message: 'Transaction sent! Check Solscan for confirmation.'
                 }
               };
             }
@@ -837,21 +838,26 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 { skipPreflight: false, maxRetries: 3 }
               );
               
-              console.log('Transaction sent:', signature);
+              console.log('✅ Transaction sent! Signature:', signature);
+              console.log('Confirming in background...');
               
-              // Confirm
-              await connection.confirmTransaction(
+              // Don't wait for confirmation - return immediately with signature
+              // Confirmation will happen in background
+              connection.confirmTransaction(
                 { signature, blockhash, lastValidBlockHeight },
                 'confirmed'
-              );
-              
-              console.log('✅ SPL Token NFT sent! Sig:', signature);
+              ).then(() => {
+                console.log('✅ Transaction confirmed!');
+              }).catch((err) => {
+                console.warn('⚠️ Confirmation check failed (but tx may still succeed):', err);
+              });
               
               return {
                 success: true,
                 data: {
                   txHash: signature,
-                  explorerUrl: `https://solscan.io/tx/${signature}`
+                  explorerUrl: `https://solscan.io/tx/${signature}`,
+                  message: 'Transaction sent! Check Solscan for confirmation.'
                 }
               };
             }
