@@ -56,7 +56,7 @@ export const NFTDetail: React.FC<NFTDetailProps> = ({ nft, onBack, onSend }) => 
         </div>
       )}
 
-     <div className="mb-4">
+  <div className="mb-4">
   <h3 className="text-sm font-semibold text-gray-400 mb-2">Details</h3>
   <div className="space-y-2 text-sm">
     {nft.chain && (
@@ -66,10 +66,17 @@ export const NFTDetail: React.FC<NFTDetailProps> = ({ nft, onBack, onSend }) => 
       </div>
     )}
     <div className="flex justify-between items-start">
-      <span className="text-gray-400 flex-shrink-0">Contract Address:</span>
-      <span className="font-mono text-xs text-right break-all ml-2">
-        {nft.contract?.address?.slice(0, 6)}...{nft.contract?.address?.slice(-4)}
-      </span>
+     <span className="text-gray-400 flex-shrink-0">Contract Address:</span>
+      <div className="flex items-center space-x-1">
+        <span className="font-mono text-xs text-right break-all">
+          {nft.contract?.address?.slice(0, 6)}...{nft.contract?.address?.slice(-4)}
+        </span>
+        <CopyButton 
+          text={nft.contract?.address || ''} 
+          iconOnly 
+          className="text-gray-400 hover:text-white flex-shrink-0"
+        />
+      </div>
     </div>
     <div className="flex justify-between items-start">
       <span className="text-gray-400 flex-shrink-0">Token ID:</span>
