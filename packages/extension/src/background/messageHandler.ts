@@ -210,6 +210,9 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         const solAccount = engine.getCurrentAccount('solana');
         const ethAccount = engine.getCurrentAccount('ethereum');
 
+        // Start monitoring for incoming transactions
+        startMonitoring();
+
         console.log('Wallet unlocked - SOL:', solAccount?.address, 'ETH:', ethAccount?.address);
 
         return { 
@@ -462,6 +465,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
       case 'WALLET_LOCK': {
         engine.lockWallet();
+        stopMonitoring();
         const state = engine.getState();
         await saveWalletState(state);
         // Clear stored password
