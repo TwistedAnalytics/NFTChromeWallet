@@ -15,7 +15,7 @@ export const useNFTs = () => {
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const result = await chrome.storage.local.get(['lastNFTFetch', 'cachedNFTs']);
-      const lastFetch = result.lastNFTFetch ?? 0;
+      const lastFetch = Number(result.lastNFTFetch ?? 0);
       const now = Date.now();
       const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -25,7 +25,7 @@ export const useNFTs = () => {
         return;
       }
     }
-
+    
     // Fetch fresh data
     console.log('⏳ Fetching fresh NFTs...');
     setIsLoading(true);
