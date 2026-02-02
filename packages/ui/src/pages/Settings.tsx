@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useWallet } from '../hooks/useWallet';
 import { useNavigation } from '../contexts/NavigationContext';
 
 export const Settings: React.FC = () => {
