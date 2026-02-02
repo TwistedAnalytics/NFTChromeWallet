@@ -27,7 +27,7 @@ export const ConnectionApproval: React.FC = () => {
     chrome.storage.local.get([requestId], (result) => {
       const req = result[requestId];
       if (req) {
-        setRequest(req);
+        setRequest(req as ConnectionRequest);
         setIsLoading(false);
       } else {
         console.error('Request not found:', requestId);
