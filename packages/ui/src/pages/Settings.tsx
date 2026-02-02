@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useNavigation } from '../contexts/NavigationContext';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export const Settings: React.FC = () => {
   const { lockWallet } = useWallet();
