@@ -113,7 +113,7 @@ export const useWallet = () => {
     });
     
     if (response.success) {
-      store.setCurrentNetwork(network);
+      store.setCurrentNetwork(network as any);
       await initialize();
     }
   }, [send, initialize]);
