@@ -15,9 +15,9 @@ export const useNFTs = () => {
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const result = await chrome.storage.local.get(['lastNFTFetch', 'cachedNFTs']);
-      const lastFetch = result.lastNFTFetch || 0;
+      const lastFetch = result.lastNFTFetch ?? 0;
       const now = Date.now();
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for NFTs (they don't change often)
+      const CACHE_DURATION = 5 * 60 * 1000;
 
       if (now - lastFetch < CACHE_DURATION && result.cachedNFTs && Array.isArray(result.cachedNFTs)) {
         console.log('✅ Using cached NFTs (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
