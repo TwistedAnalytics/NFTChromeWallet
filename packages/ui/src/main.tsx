@@ -74,8 +74,8 @@ const AppContent: React.FC = () => {
         
         if (now - lastFetch < CACHE_DURATION && result.cachedSolBalance && result.cachedEthBalance) {
           console.log('✅ Using cached balances (age:', Math.floor((now - lastFetch) / 1000), 'seconds)');
-          store.setBalance(result.cachedSolBalance);
-          store.setEthBalance(result.cachedEthBalance);
+          store.setBalance(String(result.cachedSolBalance || '0'));
+          store.setEthBalance(String(result.cachedEthBalance || '0'));
         } else {
           console.log('⏳ Fetching fresh balances...');
           chrome.runtime.sendMessage({ type: 'GET_BALANCE' }, (response) => {
