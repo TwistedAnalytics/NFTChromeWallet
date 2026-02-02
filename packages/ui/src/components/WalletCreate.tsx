@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CopyButton } from './CopyButton';
 
 interface WalletCreateProps {
   onSubmit: (password: string, mnemonic?: string) => Promise<{ success: boolean; error?: string; mnemonic?: string }>;
