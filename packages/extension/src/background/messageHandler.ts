@@ -680,7 +680,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       }
 
       //send start
-      case 'SEND_NFT': {
+      
+            case 'SEND_NFT': {
         const { nft, toAddress } = validatedMessage.data;
         
         console.log('🚀 SEND_NFT request:', { nft, toAddress });
@@ -693,7 +694,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
         
         try {
           if (chain === 'solana') {
-            // Send Solana NFT using direct transaction construction
             const solAccount = engine.getCurrentAccount('solana');
             if (!solAccount) {
               throw new Error('No Solana account found');
@@ -706,41 +706,13 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             const HELIUS_API_KEY = '647bbd34-42b3-418b-bf6c-c3a40813b41c';
             const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
             
-            console.log('📤 Building transfer for:', {
-              asset: nft.mint || nft.id,
-              from: solAccount.address,
-              to: toAddress
-            });
+            const nftInterface = nft.raw?.interface || nft.interface || '';
             
-            // Use Helius DAS API to build the transfer transaction
-            const response = await fetch(heliusUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 'send-nft',
-                method: 'getAsset',
-                params: {
-                  id: nft.mint || nft.id
-                }
-              })
-            });
+            console.log('NFT Interface:', nftInterface);
             
-            const assetData = await response.json();
-            console.log('Asset data:', assetData);
-            
-            if (assetData.error) {
-              throw new Error(`Failed to fetch asset: ${assetData.error.message}`);
-            }
-            
-            const asset = assetData.result;
-            const assetInterface = asset.interface;
-            
-            console.log('Asset interface:', assetInterface);
-            
-            // For Metaplex Core Assets, use specialized transfer
-            if (assetInterface === 'MplCoreAsset') {
-              console.log('Using Metaplex Core transfer');
+            // Metaplex Core Assets
+            if (nftInterface === 'MplCoreAsset' || nftInterface.includes('MplCore')) {
+              console.log('📦 Metaplex Core Asset transfer');
               
               const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
               const { createSignerFromKeypair, signerIdentity, publicKey: umiPublicKey } = await import('@metaplex-foundation/umi');
@@ -751,31 +723,33 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               const signer = createSignerFromKeypair(umi, umiKeypair);
               umi.use(signerIdentity(signer));
               
-              // Get collection from grouping
+              // Get collection from NFT data
+              const grouping = nft.raw?.grouping || nft.grouping || [];
+              const collectionGroup = grouping.find((g: any) => g.group_key === 'collection');
+              
               let collection = null;
-              if (asset.grouping) {
-                const collectionGroup = asset.grouping.find((g: any) => g.group_key === 'collection');
-                if (collectionGroup?.group_value) {
-                  collection = umiPublicKey(collectionGroup.group_value);
-                  console.log('Collection:', collection);
-                }
+              if (collectionGroup?.group_value) {
+                collection = umiPublicKey(collectionGroup.group_value);
               }
               
-              const transferBuilder = transferV1(umi, {
+              console.log('Transferring with collection:', collection);
+              
+              // Build and send transfer
+              const builder = transferV1(umi, {
                 asset: umiPublicKey(nft.mint || nft.id),
                 newOwner: umiPublicKey(toAddress),
+                collection: collection || undefined,
               });
               
-              // Add collection if it exists
-              if (collection) {
-                (transferBuilder as any).collection = collection;
-              }
+              const result = await builder.sendAndConfirm(umi, {
+                send: { skipPreflight: false },
+                confirm: { commitment: 'confirmed' }
+              });
               
-              const tx = await transferBuilder.sendAndConfirm(umi);
               const bs58 = await import('bs58');
-              const signature = bs58.default.encode(tx.signature);
+              const signature = bs58.default.encode(result.signature);
               
-              console.log('✅ NFT sent! Signature:', signature);
+              console.log('✅ Metaplex Core NFT sent! Sig:', signature);
               
               return {
                 success: true,
@@ -786,17 +760,18 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               };
             }
             
-            // For regular SPL tokens
+            // Regular SPL Token NFTs
             else {
-              console.log('Using SPL Token transfer');
+              console.log('📦 SPL Token transfer');
               
               const connection = new Connection(heliusUrl, 'confirmed');
               const mintAddress = new PublicKey(nft.mint || nft.id);
               const toPublicKey = new PublicKey(toAddress);
               
+              // Check token program
               const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
-              
               const mintInfo = await connection.getAccountInfo(mintAddress);
+              
               if (!mintInfo) {
                 throw new Error('NFT mint not found');
               }
@@ -805,6 +780,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 ? TOKEN_2022_PROGRAM_ID 
                 : TOKEN_PROGRAM_ID;
               
+              // Get token accounts
               const fromATA = await getAssociatedTokenAddress(
                 mintAddress,
                 fromKeypair.publicKey,
@@ -819,10 +795,17 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 tokenProgramId
               );
               
-              const transaction = new Transaction();
+              // Build transaction - GET BLOCKHASH FIRST
+              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+              const transaction = new Transaction({ 
+                recentBlockhash: blockhash,
+                feePayer: fromKeypair.publicKey 
+              });
               
+              // Check if recipient account exists
               const toAccountInfo = await connection.getAccountInfo(toATA);
               if (!toAccountInfo) {
+                console.log('Creating recipient token account...');
                 transaction.add(
                   createAssociatedTokenAccountInstruction(
                     fromKeypair.publicKey,
@@ -834,6 +817,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 );
               }
               
+              // Add transfer
               transaction.add(
                 createTransferInstruction(
                   fromATA,
@@ -845,20 +829,23 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 )
               );
               
-              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-              transaction.recentBlockhash = blockhash;
-              transaction.feePayer = fromKeypair.publicKey;
-              
+              // Sign and send IMMEDIATELY
               transaction.sign(fromKeypair);
               
-              const signature = await connection.sendRawTransaction(transaction.serialize(), {
-                skipPreflight: false,
-                preflightCommitment: 'confirmed'
-              });
+              const signature = await connection.sendRawTransaction(
+                transaction.serialize(),
+                { skipPreflight: false, maxRetries: 3 }
+              );
               
-              await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+              console.log('Transaction sent:', signature);
               
-              console.log('✅ NFT sent! Signature:', signature);
+              // Confirm
+              await connection.confirmTransaction(
+                { signature, blockhash, lastValidBlockHeight },
+                'confirmed'
+              );
+              
+              console.log('✅ SPL Token NFT sent! Sig:', signature);
               
               return {
                 success: true,
@@ -870,7 +857,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
             }
             
           } else {
-            // Ethereum NFT transfer (existing code)
+            // Ethereum
             const ethAccount = engine.getCurrentAccount('ethereum');
             if (!ethAccount) {
               throw new Error('No Ethereum account found');
@@ -919,7 +906,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
           };
         }
       }
-
+      
       //send end
       // start transaction
       case 'SEND_TRANSACTION': {
