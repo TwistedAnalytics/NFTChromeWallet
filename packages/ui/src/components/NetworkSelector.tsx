@@ -22,7 +22,7 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
       <div className="space-y-2">
         {networks.map((network) => (
           <button
-            key={network.value}
+            key={String(network.value)}
             onClick={() => onNetworkChange(network.value)}
             className={`w-full text-left p-3 rounded-lg transition-colors ${
               currentNetwork === network.value
