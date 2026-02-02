@@ -31,7 +31,7 @@ export const Send: React.FC<SendProps> = ({ nft }) => {
 
       <h2 className="text-2xl font-bold mb-6">Send NFT</h2>
 
-      <SendNFT nft={nft} onSend={handleSend} />
+      <SendNFT nft={nft} onBack={() => navigate('nft-detail', { nft })} onSend={handleSend} />
     </div>
   );
 };
