@@ -52,7 +52,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
       
       {/* Tooltip */}
       {showCopied && (
-        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg border border-gray-700 whitespace-nowrap z-50">
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg border border-gray-700 whitespace-nowrap z-50 animate-fade-in">
           Copied!
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
             <div className="border-4 border-transparent border-t-gray-900"></div>
