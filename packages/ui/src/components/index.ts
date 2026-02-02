@@ -8,3 +8,4 @@ export { WalletUnlock } from './WalletUnlock';
 export { NetworkSelector } from './NetworkSelector';
 export { ConnectedSites } from './ConnectedSites';
 export { ApprovalPrompt } from './ApprovalPrompt';
+export { CopyButton } from './CopyButton';
