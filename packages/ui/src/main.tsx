@@ -36,15 +36,18 @@ const AppContent: React.FC = () => {
         console.log('Has vault:', hasVault);
         setHasWallet(hasVault);
 
-        // If vault exists, check if background says it's unlocked
+          // If vault exists, check if background says it's unlocked
         if (hasVault) {
           const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
           console.log('Background status:', statusResponse);
           
           if (statusResponse.success && statusResponse.data?.isUnlocked) {
-            // Background says unlocked, sync UI
+            // Background says unlocked, sync UI with addresses
             store.setUnlocked(true);
+            store.setAddress(statusResponse.data.address);
+            store.setEthAddress(statusResponse.data.ethAddress);
             console.log('✅ Synced with background: wallet is unlocked');
+            console.log('✅ Addresses set - SOL:', statusResponse.data.address, 'ETH:', statusResponse.data.ethAddress);
           }
         }
       } catch (error) {
