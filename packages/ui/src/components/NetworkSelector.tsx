@@ -6,7 +6,7 @@ interface NetworkSelectorProps {
   onNetworkChange: (network: Network) => void;
 }
 
-const networks: { value: string; label: string }[] = [
+const networks = [
   { value: 'mainnet', label: 'Ethereum Mainnet' },
   { value: 'goerli', label: 'Goerli Testnet' },
   { value: 'sepolia', label: 'Sepolia Testnet' },
@@ -22,8 +22,8 @@ export const NetworkSelector: React.FC<NetworkSelectorProps> = ({
       <div className="space-y-2">
         {networks.map((network) => (
           <button
-            key={String(network.value)}
-            onClick={() => onNetworkChange(network.value)}
+            key={network.value}
+            onClick={() => onNetworkChange(network.value as any)}
             className={`w-full text-left p-3 rounded-lg transition-colors ${
               currentNetwork === network.value
                 ? 'bg-indigo-600 text-white'
