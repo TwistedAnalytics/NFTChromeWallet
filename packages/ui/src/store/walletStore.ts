@@ -33,7 +33,7 @@ const initialState = {
   balance: '0',
   ethBalance: '0',  // Add this
   nfts: [],
-  currentNetwork: 'mainnet' as Network,
+  selectedNetwork: (storedState?.selectedNetwork || 'mainnet') as any,
   connectedSites: [],
   isLoading: false,
   error: null,
