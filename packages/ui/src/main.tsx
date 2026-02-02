@@ -44,8 +44,8 @@ const AppContent: React.FC = () => {
           if (statusResponse.success && statusResponse.data?.isUnlocked) {
             // Background says unlocked, sync UI
             store.setUnlocked(true);
-            store.setAddress(statusResponse.data.address);
-            store.setEthAddress(statusResponse.data.ethAddress);
+            store.setSolAddress(String(result.cachedSolAddress || ''));
+            store.setEthAddress(String(result.cachedEthAddress || ''));
             console.log('✅ Synced with background: wallet is unlocked');
           }
         }
