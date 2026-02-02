@@ -737,7 +737,8 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               );
             }
             
-            // Handle Metaplex Core Assets
+            //send metacore
+                        // Handle Metaplex Core Assets
             if (nftInterface === 'MplCoreAsset' || nftInterface.includes('MplCore')) {
               console.log('📦 Metaplex Core Asset - using MPL Core transfer');
               
@@ -745,7 +746,7 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 // Dynamic import for Metaplex Core
                 const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
                 const { createSignerFromKeypair, signerIdentity, publicKey: umiPublicKey } = await import('@metaplex-foundation/umi');
-                const { transferV1 } = await import('@metaplex-foundation/mpl-core');
+                const { transferV1, fetchAssetV1 } = await import('@metaplex-foundation/mpl-core');
                 
                 // Create Umi instance
                 const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
@@ -757,14 +758,60 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 
                 console.log('Umi signer:', signer.publicKey);
                 
+                // Fetch the asset to get collection info
+                const asset = await fetchAssetV1(umi, umiPublicKey(assetAddress.toString()));
+                console.log('Asset fetched:', {
+                  owner: asset.owner,
+                  updateAuthority: asset.updateAuthority,
+                });
+                
+                // Try to get collection from multiple sources
+                let collectionAddress = null;
+                
+                // Check if asset has updateAuthority that's a collection
+                if (asset.updateAuthority && asset.updateAuthority.__option === 'Some') {
+                  const updateAuth = asset.updateAuthority.value;
+                  if (updateAuth && typeof updateAuth === 'object' && 'Collection' in updateAuth) {
+                    collectionAddress = updateAuth.Collection[0];
+                    console.log('Collection from updateAuthority:', collectionAddress);
+                  }
+                }
+                
+                // Fallback: try to get from NFT grouping data
+                if (!collectionAddress && nft.grouping) {
+                  const collectionGroup = nft.grouping.find((g: any) => g.group_key === 'collection');
+                  if (collectionGroup?.group_value) {
+                    try {
+                      collectionAddress = umiPublicKey(collectionGroup.group_value);
+                      console.log('Collection from grouping:', collectionAddress);
+                    } catch (e) {
+                      console.warn('Invalid collection address in grouping');
+                    }
+                  }
+                }
+                
+                console.log('Final collection address:', collectionAddress);
+                
                 // Build transfer instruction
-                const tx = await transferV1(umi, {
+                const transferParams: any = {
                   asset: umiPublicKey(assetAddress.toString()),
                   newOwner: umiPublicKey(toAddress),
-                  collection: undefined, // Optional - can be derived
-                }).sendAndConfirm(umi);
+                };
                 
-                const signature = Buffer.from(tx.signature).toString('base64');
+                // Add collection if found
+                if (collectionAddress) {
+                  transferParams.collection = collectionAddress;
+                }
+                
+                console.log('Transfer params:', transferParams);
+                
+                const tx = await transferV1(umi, transferParams).sendAndConfirm(umi);
+                
+                // Convert signature to base58
+                const signatureBytes = tx.signature;
+                const bs58 = await import('bs58');
+                const signature = bs58.default.encode(signatureBytes);
+                
                 console.log('✅ Metaplex Core NFT sent! Signature:', signature);
                 
                 return {
@@ -776,11 +823,16 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
                 };
               } catch (error: any) {
                 console.error('❌ Metaplex Core transfer error:', error);
+                console.error('Error details:', {
+                  message: error.message,
+                  logs: error.logs,
+                  cause: error.cause
+                });
                 throw new Error(`Failed to transfer Metaplex Core Asset: ${error.message}`);
               }
             }
             
-            // Handle regular SPL Token NFTs
+            // send SPL Token NFTs
             console.log('📦 Regular SPL Token NFT');
             
             // Detect which token program this NFT uses
