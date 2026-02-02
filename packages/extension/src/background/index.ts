@@ -27,19 +27,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Wrap everything in try-catch to prevent ANY errors from bubbling up
   try {
-    // Set a timeout for the response
-    const timeoutId = setTimeout(() => {
-      console.warn('⚠️ Request timeout for', message.type);
-      sendResponse({
-        success: false,
-        error: 'Request timeout - but transaction may have been sent. Check your wallet.',
-      });
-    }, 30000); // 30 second timeout instead of default
-
     // Handle message asynchronously
     handleMessage(message, sender)
       .then(response => {
-        clearTimeout(timeoutId);
         try {
           sendResponse(response);
         } catch (error) {
@@ -47,7 +37,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })
       .catch(error => {
-        clearTimeout(timeoutId);
         console.error('❌ Message handler error:', error?.message || error);
         try {
           sendResponse({
