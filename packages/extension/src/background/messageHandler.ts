@@ -734,29 +734,29 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
               
               console.log('Transferring with collection:', collection);
               
-              // Build and send transfer
+              // Build and send transfer (NO CONFIRMATION WAIT)
               const builder = transferV1(umi, {
                 asset: umiPublicKey(nft.mint || nft.id),
                 newOwner: umiPublicKey(toAddress),
                 collection: collection || undefined,
               });
               
-              const result = await builder.sendAndConfirm(umi, {
-                send: { skipPreflight: false },
-                confirm: { commitment: 'confirmed' }
+              // Send transaction WITHOUT waiting for confirmation
+              const signature = await builder.send(umi, {
+                skipPreflight: false,
               });
               
               const bs58 = await import('bs58');
-              const signature = bs58.default.encode(result.signature);
+              const signatureBase58 = bs58.default.encode(signature);
               
-              console.log('✅ Metaplex Core NFT sent! Sig:', signature);
+              console.log('✅ Metaplex Core NFT sent! Signature:', signatureBase58);
+              console.log('Transaction will confirm in background');
               
               return {
                 success: true,
                 data: {
-                  txHash: signature,
-                  explorerUrl: `https://solscan.io/tx/${signature}`,
-                  message: 'Transaction sent! Check Solscan for confirmation.'
+                  txHash: signatureBase58,
+                  explorerUrl: `https://solscan.io/tx/${signatureBase58}`
                 }
               };
             }
