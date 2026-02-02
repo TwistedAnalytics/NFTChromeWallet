@@ -11,6 +11,7 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
   const [toAddress, setToAddress] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   // Determine the chain from NFT data
@@ -21,7 +22,6 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
   // Validate Solana address (base58, 32-44 characters)
   const isValidSolanaAddress = (address: string): boolean => {
     if (!address) return false;
-    // Solana addresses are base58 encoded, typically 32-44 characters
     const solanaRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     return solanaRegex.test(address);
   };
@@ -67,16 +67,13 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
 
     setIsSending(true);
     setError(null);
-    setTxHash(null);
 
     try {
       const result = await onSend(toAddress);
 
       if (result.success) {
         setTxHash(result.txHash || null);
-        setTimeout(() => {
-          onBack();
-        }, 3000);
+        setSuccess(true);
       } else {
         setError(result.error || 'Failed to send NFT');
       }
@@ -99,163 +96,209 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
     return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   };
 
-  return (
-    <div className="p-4">
-      <div className="flex items-center gap-3 mb-6">
+  const getExplorerUrl = () => {
+    if (!txHash) return '';
+    if (isSolana) return `https://solscan.io/tx/${txHash}`;
+    if (isEthereum) return `https://etherscan.io/tx/${txHash}`;
+    return '';
+  };
+
+  // Success Screen
+  if (success) {
+    return (
+      <div className="p-4">
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white">NFT Sent!</h2>
+        </div>
+
+        {/* Success Icon and Message */}
+        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+          {/* Success Icon */}
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
+            <svg 
+              className="w-12 h-12 text-green-400" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M5 13l4 4L19 7" 
+              />
+            </svg>
+          </div>
+
+          {/* Success Message */}
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold text-white">Transaction Sent!</h3>
+            <p className="text-sm text-gray-400">
+              Your NFT has been sent successfully
+            </p>
+          </div>
+
+          {/* NFT Preview */}
+          <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-700">
+            {nft.metadata?.image ? (
+              <img 
+                src={nft.metadata.image} 
+                alt={nft.metadata?.name || 'NFT'} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                <span className="text-gray-500 text-xs">No Image</span>
+              </div>
+            )}
+          </div>
+
+          {/* NFT Name */}
+          <p className="text-sm font-medium text-white">
+            {nft.metadata?.name || 'Unknown NFT'}
+          </p>
+
+          {/* Chain Badge */}
+          <span className={`px-3 py-1 text-xs font-medium border rounded-full ${getChainBadgeColor()}`}>
+            {isSolana ? 'Solana' : isEthereum ? 'Ethereum' : 'Unknown'}
+          </span>
+        </div>
+
+        {/* Transaction Hash */}
+        {txHash && (
+          <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+            <p className="text-xs text-gray-400 mb-2">Transaction Hash</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-white font-mono truncate flex-1">
+                {txHash.slice(0, 8)}...{txHash.slice(-8)}
+              </p>
+              <a
+                href={getExplorerUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+              >
+                View →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Note */}
+        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <p className="text-xs text-blue-400">
+            ℹ️ Your transaction is being confirmed on the blockchain. This may take a few moments.
+          </p>
+        </div>
+
+        {/* Go Home Button */}
         <button
           onClick={onBack}
-          className="p-2 hover:bg-white/10 rounded-lg transition-all"
-          disabled={isSending}
+          className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
         >
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          Go Home
+        </button>
+      </div>
+    );
+  }
+
+  // Send Form Screen
+  return (
+    <div className="p-4">
+      {/* Header */}
+      <div className="flex items-center mb-6">
+        <button
+          onClick={onBack}
+          className="mr-3 text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h2 className="text-2xl font-bold">Send NFT</h2>
+        <h2 className="text-xl font-bold text-white">Send NFT</h2>
       </div>
 
-      <div className="card mb-4">
-        {/* NFT Preview */}
-        <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-700">
-          <div className="w-20 h-20 bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
-            {nft.metadata?.image || nft.raw?.content?.links?.image ? (
-              <img
-                src={nft.metadata?.image || nft.raw?.content?.links?.image}
-                alt={nft.metadata?.name || 'NFT'}
+      {/* NFT Preview */}
+      <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-700 flex-shrink-0">
+            {nft.metadata?.image ? (
+              <img 
+                src={nft.metadata.image} 
+                alt={nft.metadata?.name || 'NFT'} 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                <span className="text-gray-500 text-xs">No Image</span>
               </div>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white truncate">
-              {nft.metadata?.name || `#${nft.tokenId?.slice(0, 8)}`}
+            <h3 className="text-sm font-semibold text-white truncate">
+              {nft.metadata?.name || 'Unknown NFT'}
             </h3>
-            <p className="text-sm text-gray-400 truncate">
+            <p className="text-xs text-gray-400 truncate">
               {nft.contract?.name || 'Unknown Collection'}
             </p>
-            <div className={`inline-flex items-center gap-1.5 mt-2 px-2 py-1 rounded-full border text-xs font-medium ${getChainBadgeColor()}`}>
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <circle cx="10" cy="10" r="8"/>
-              </svg>
-              {chain === 'solana' ? 'Solana' : 'Ethereum'}
-            </div>
+            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium border rounded ${getChainBadgeColor()}`}>
+              {isSolana ? 'Solana' : isEthereum ? 'Ethereum' : 'Unknown'}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Warning Banner */}
-        <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-          <div className="flex gap-2">
-            <svg className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      {/* Recipient Address Input */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Recipient Address
+        </label>
+        <input
+          type="text"
+          value={toAddress}
+          onChange={(e) => setToAddress(e.target.value)}
+          placeholder={getPlaceholder()}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          disabled={isSending}
+        />
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Send Button */}
+      <button
+        onClick={handleSend}
+        disabled={isSending || !toAddress.trim()}
+        className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
+          isSending || !toAddress.trim()
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+        }`}
+      >
+        {isSending ? (
+          <span className="flex items-center justify-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            <div>
-              <p className="text-yellow-500 font-semibold text-sm">Important</p>
-              <p className="text-gray-300 text-xs mt-1">
-                {isSolana && 'This is a Solana NFT. Only send to a valid Solana wallet address. Sending to an Ethereum address will result in permanent loss.'}
-                {isEthereum && 'This is an Ethereum NFT. Only send to a valid Ethereum wallet address (0x...). Sending to a Solana address will result in permanent loss.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recipient Address Input */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2 text-gray-300">
-            Recipient {isSolana ? 'Solana' : 'Ethereum'} Address
-          </label>
-          <input
-            type="text"
-            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
-            placeholder={getPlaceholder()}
-            value={toAddress}
-            onChange={(e) => {
-              setToAddress(e.target.value.trim());
-              setError(null); // Clear error on input
-            }}
-            disabled={isSending}
-          />
-          {toAddress && !isSending && (
-            <div className="mt-2 text-xs">
-              {validateAddress().valid ? (
-                <p className="text-green-400 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Valid {isSolana ? 'Solana' : 'Ethereum'} address
-                </p>
-              ) : (
-                <p className="text-red-400 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Invalid address format
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-500 rounded-lg">
-            <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          </div>
+            Sending...
+          </span>
+        ) : (
+          'Send NFT'
         )}
+      </button>
 
-        {/* Success Message */}
-        {txHash && (
-          <div className="mb-4 p-3 bg-green-900/50 border border-green-500 rounded-lg">
-            <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div>
-                <p className="text-green-400 font-semibold text-sm">Transaction Sent!</p>
-                <p className="text-gray-400 text-xs mt-1 font-mono break-all">
-                  {txHash.slice(0, 16)}...{txHash.slice(-16)}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Send Button */}
-        <button
-          onClick={handleSend}
-          disabled={isSending || !toAddress || !validateAddress().valid}
-          className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isSending ? (
-            <>
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Sending...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Send NFT
-            </>
-          )}
-        </button>
+      {/* Warning */}
+      <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+        <p className="text-xs text-yellow-400">
+          ⚠️ Double-check the recipient address. NFT transfers cannot be reversed.
+        </p>
       </div>
     </div>
   );
