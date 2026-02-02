@@ -23,7 +23,7 @@ export const NFTView: React.FC<NFTViewProps> = ({ nft }) => {
         ← Back to Gallery
       </button>
 
-      <NFTDetail nft={nft} onSend={handleSend} />
+      <NFTDetail nft={nft} onBack={() => navigate('gallery')} onSend={handleSend} />
     </div>
   );
 };
