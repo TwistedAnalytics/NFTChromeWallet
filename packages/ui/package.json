@@ -3,11 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "clean": "rm -rf dist"
-  },
-    "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "clean": "rm -rf dist",
