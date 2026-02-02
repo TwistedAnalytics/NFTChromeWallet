@@ -4,7 +4,9 @@
     "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["vite/client", "chrome"],
+    "skipLibCheck": true
   },
   "include": ["src/**/*", "*.html"],
   "exclude": ["node_modules", "dist"]
