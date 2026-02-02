@@ -2,8 +2,8 @@ import React from 'react';
 import type { Network } from '@nft-wallet/shared';
 
 interface NetworkSelectorProps {
-  currentNetwork: Network;
-  onNetworkChange: (network: Network) => void;
+  currentNetwork: string;
+  onNetworkChange: (network: string) => void;
 }
 
 const networks = [
