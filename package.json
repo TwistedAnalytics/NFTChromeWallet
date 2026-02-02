@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
+    "build:clean": "turbo run clean && turbo run build",
     "dev": "pnpm -r --parallel dev",
     "test": "vitest run",
     "clean": "pnpm -r clean"
