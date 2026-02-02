@@ -66,7 +66,7 @@ const AppContent: React.FC = () => {
       
       // Check if we have recent cached balances (within 30 seconds)
       chrome.storage.local.get(['lastBalanceFetch', 'cachedSolBalance', 'cachedEthBalance']).then((result) => {
-        const lastFetch = result.lastBalanceFetch ?? 0;
+        const lastFetch = Number(result.lastBalanceFetch ?? 0);
         const now = Date.now();
         const CACHE_DURATION = 30000;
         
