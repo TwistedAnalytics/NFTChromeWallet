@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { NFT } from '@nft-wallet/shared';
+import { CopyButton } from './CopyButton';
 
 interface SendNFTProps {
   nft: NFT;
@@ -169,22 +170,29 @@ export const SendNFT: React.FC<SendNFTProps> = ({ nft, onBack, onSend }) => {
         {txHash && (
           <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <p className="text-xs text-gray-400 mb-2">Transaction Hash</p>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between space-x-2">
               <p className="text-xs text-white font-mono truncate flex-1">
                 {txHash.slice(0, 8)}...{txHash.slice(-8)}
               </p>
-              <a
-                href={getExplorerUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
-              >
-                View →
-              </a>
+              <div className="flex items-center space-x-2">
+                <CopyButton 
+                  text={txHash} 
+                  iconOnly 
+                  className="text-gray-400 hover:text-white"
+                />
+                <a
+                  href={getExplorerUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap"
+                >
+                  View →
+                </a>
+              </div>
             </div>
           </div>
         )}
-
+        
         {/* Note */}
         <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
           <p className="text-xs text-blue-400">
