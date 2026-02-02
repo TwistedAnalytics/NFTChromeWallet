@@ -1,5 +1,6 @@
 import React from 'react';
 import type { NFT } from '@nft-wallet/shared';
+import { CopyButton } from './CopyButton';
 
 interface NFTDetailProps {
   nft: NFT;
